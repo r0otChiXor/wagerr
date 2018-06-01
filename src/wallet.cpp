@@ -2587,6 +2587,7 @@ bool CWallet::ConvertList(std::vector<CTxIn> vCoins, std::vector<CAmount>& vecAm
     return true;
 }
 
+// TODO See `rpcwallet.cpp:SendMoney` for notes on `opReturn`.
 bool CWallet::CreateTransaction(const vector<pair<CScript, CAmount> >& vecSend,
     CWalletTx& wtxNew,
     CReserveKey& reservekey,
@@ -2595,7 +2596,8 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, CAmount> >& vecSend,
     const CCoinControl* coinControl,
     AvailableCoinsType coin_type,
     bool useIX,
-    CAmount nFeePay)
+    CAmount nFeePay,
+    const std::string& opReturn)
 {
     if (useIX && nFeePay < CENT) nFeePay = CENT;
 
@@ -2630,10 +2632,18 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, CAmount> >& vecSend,
                 CAmount nTotalValue = nValue + nFeeRet;
                 double dPriority = 0;
 
+                // TODO Give `data` a more descriptive name.
+                std::vector<unsigned char> data;
+                for(std::string::size_type i = 0; i < opReturn.size(); ++i) {
+                        data.push_back(opReturn[i]);
+                }
+                CScript pubSubScript = CScript() << OP_RETURN << data;
+
                 // vouts to the payees
                 if (coinControl && !coinControl->fSplitBlock) {
                     BOOST_FOREACH (const PAIRTYPE(CScript, CAmount) & s, vecSend) {
-                        CTxOut txout(s.second, s.first);
+                        CScript outs = opReturn.size() > 0 ? pubSubScript : s.first;
+                        CTxOut txout(s.second, outs);
                         if (txout.IsDust(::minRelayTxFee)) {
                             strFailReason = _("Transaction amount too small");
                             return false;
@@ -2650,12 +2660,13 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, CAmount> >& vecSend,
                         nSplitBlock = 1;
 
                     BOOST_FOREACH (const PAIRTYPE(CScript, CAmount) & s, vecSend) {
+                        CScript outs = opReturn.size() > 0 ? pubSubScript : s.first;
                         for (int i = 0; i < nSplitBlock; i++) {
                             if (i == nSplitBlock - 1) {
                                 uint64_t nRemainder = s.second % nSplitBlock;
-                                txNew.vout.push_back(CTxOut((s.second / nSplitBlock) + nRemainder, s.first));
+                                txNew.vout.push_back(CTxOut((s.second / nSplitBlock) + nRemainder, outs));
                             } else
-                                txNew.vout.push_back(CTxOut(s.second / nSplitBlock, s.first));
+                                txNew.vout.push_back(CTxOut(s.second / nSplitBlock, outs));
                         }
                     }
                 }
@@ -2806,15 +2817,16 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, CAmount> >& vecSend,
     return true;
 }
 
-bool CWallet::CreateTransaction(CScript scriptPubKey, const CAmount& nValue, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, std::string& strFailReason, const CCoinControl* coinControl, AvailableCoinsType coin_type, bool useIX, CAmount nFeePay)
+// TODO See `rpcwallet.cpp:SendMoney` for notes on `opReturn`.
+bool CWallet::CreateTransaction(CScript scriptPubKey, const CAmount& nValue, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, std::string& strFailReason, const CCoinControl* coinControl, AvailableCoinsType coin_type, bool useIX, CAmount nFeePay, const std::string& opReturn)
 {
     vector<pair<CScript, CAmount> > vecSend;
     vecSend.push_back(make_pair(scriptPubKey, nValue));
-    return CreateTransaction(vecSend, wtxNew, reservekey, nFeeRet, strFailReason, coinControl, coin_type, useIX, nFeePay);
+    return CreateTransaction(vecSend, wtxNew, reservekey, nFeeRet, strFailReason, coinControl, coin_type, useIX, nFeePay, opReturn);
 }
 
 // ppcoin: create coin stake transaction
-bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int64_t nSearchInterval, CMutableTransaction& txNew, unsigned int& nTxNewTime)
+bool CWallet::FindCoinStake(const CKeyStore& keystore, unsigned int nBits, int64_t nSearchInterval, CMutableTransaction& txNew, unsigned int& nTxNewTime, vector<CWalletTx>& vwtxPrev)
 {
     // The following split & combine thresholds are important to security
     // Should not be adjusted if you don't understand the consequences
@@ -2851,8 +2863,6 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
     if (setStakeCoins.empty())
         return false;
-
-    vector<const CWalletTx*> vwtxPrev;
 
     CAmount nCredit = 0;
     CScript scriptPubKeyKernel;
@@ -2924,7 +2934,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
             txNew.vin.push_back(CTxIn(pcoin.first->GetHash(), pcoin.second));
             nCredit += pcoin.first->vout[pcoin.second].nValue;
-            vwtxPrev.push_back(pcoin.first);
+            vwtxPrev.push_back(*pcoin.first);
             txNew.vout.push_back(CTxOut(0, scriptPubKeyOut));
 
             //presstab HyperStake - calculate the total size of our new output including the stake reward so that we can use it to decide whether to split the stake outputs
@@ -2966,7 +2976,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         if (nBytes >= DEFAULT_BLOCK_MAX_SIZE / 5)
             return error("CreateCoinStake : exceeded coinstake size limit");
 
-        CAmount nFeeNeeded = GetMinimumFee(nBytes, nTxConfirmTarget, mempool);
+        CAmount nFeeNeeded = 0 * COIN; //GetMinimumFee(nBytes, nTxConfirmTarget, mempool);
 
         // Check enough fee is paid
         if (nMinFee < nFeeNeeded) {
@@ -2977,16 +2987,6 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
                 LogPrintf("CreateCoinStake : fee for coinstake %s\n", FormatMoney(nMinFee).c_str());
             break;
         }
-    }
-
-    //Masternode payment
-    FillBlockPayee(txNew, nMinFee, true);
-
-    // Sign
-    int nIn = 0;
-    BOOST_FOREACH (const CWalletTx* pcoin, vwtxPrev) {
-        if (!SignSignature(*this, *pcoin, txNew, nIn++))
-            return error("CreateCoinStake : failed to sign coinstake");
     }
 
     // Successfully generated coinstake
@@ -5034,6 +5034,32 @@ bool CWallet::SpendZerocoin(CAmount nAmount, int nSecurityLevel, CWalletTx& wtxN
     }
 
     receipt.SetStatus("Spend Successful", ZWGR_SPEND_OKAY);  // When we reach this point spending zWGR was successful
+
+    return true;
+}
+
+bool CWallet::FillCoinStake(CMutableTransaction& txNew, CAmount& nFees, std::vector<CTxOut> voutPayouts)
+{
+    //  std::vector<CTxOut> vout
+    //  BOOST_FOREACH (const CTxOut& out, voutIn)
+    //      vout.push_back(out);
+    BOOST_FOREACH (const CTxOut& out, voutPayouts)
+        txNew.vout.push_back(out);
+
+    //Masternode payment
+    FillBlockPayee(txNew, nFees, true);   // Kokary: add betting fee
+
+    return true;
+}
+
+bool CWallet::SignCoinStake(CMutableTransaction& txNew, vector<CWalletTx>& vwtxPrev)
+{
+    // Sign
+    int nIn = 0;
+    BOOST_FOREACH (const CWalletTx pcoin, vwtxPrev) {
+        if (!SignSignature(*this, pcoin, txNew, nIn++))
+            return error("CreateCoinStake : failed to sign coinstake");
+    }
 
     return true;
 }
