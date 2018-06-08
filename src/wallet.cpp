@@ -2826,7 +2826,7 @@ bool CWallet::CreateTransaction(CScript scriptPubKey, const CAmount& nValue, CWa
 }
 
 // ppcoin: create coin stake transaction
-bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int64_t nSearchInterval, CMutableTransaction& txNew, unsigned int& nTxNewTime)
+bool CWallet::FindCoinStake(const CKeyStore& keystore, unsigned int nBits, int64_t nSearchInterval, CMutableTransaction& txNew, unsigned int& nTxNewTime, vector<CWalletTx>& vwtxPrev)
 {
     // The following split & combine thresholds are important to security
     // Should not be adjusted if you don't understand the consequences
@@ -2863,8 +2863,6 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
     if (setStakeCoins.empty())
         return false;
-
-    vector<const CWalletTx*> vwtxPrev;
 
     CAmount nCredit = 0;
     CScript scriptPubKeyKernel;
@@ -2936,7 +2934,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
             txNew.vin.push_back(CTxIn(pcoin.first->GetHash(), pcoin.second));
             nCredit += pcoin.first->vout[pcoin.second].nValue;
-            vwtxPrev.push_back(pcoin.first);
+            vwtxPrev.push_back(*pcoin.first);
             txNew.vout.push_back(CTxOut(0, scriptPubKeyOut));
 
             //presstab HyperStake - calculate the total size of our new output including the stake reward so that we can use it to decide whether to split the stake outputs
@@ -2978,7 +2976,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         if (nBytes >= DEFAULT_BLOCK_MAX_SIZE / 5)
             return error("CreateCoinStake : exceeded coinstake size limit");
 
-        CAmount nFeeNeeded = GetMinimumFee(nBytes, nTxConfirmTarget, mempool);
+        CAmount nFeeNeeded = 0 * COIN; //GetMinimumFee(nBytes, nTxConfirmTarget, mempool);
 
         // Check enough fee is paid
         if (nMinFee < nFeeNeeded) {
@@ -2989,16 +2987,6 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
                 LogPrintf("CreateCoinStake : fee for coinstake %s\n", FormatMoney(nMinFee).c_str());
             break;
         }
-    }
-
-    //Masternode payment
-    FillBlockPayee(txNew, nMinFee, true);
-
-    // Sign
-    int nIn = 0;
-    BOOST_FOREACH (const CWalletTx* pcoin, vwtxPrev) {
-        if (!SignSignature(*this, *pcoin, txNew, nIn++))
-            return error("CreateCoinStake : failed to sign coinstake");
     }
 
     // Successfully generated coinstake
@@ -5046,6 +5034,32 @@ bool CWallet::SpendZerocoin(CAmount nAmount, int nSecurityLevel, CWalletTx& wtxN
     }
 
     receipt.SetStatus("Spend Successful", ZWGR_SPEND_OKAY);  // When we reach this point spending zWGR was successful
+
+    return true;
+}
+
+bool CWallet::FillCoinStake(CMutableTransaction& txNew, CAmount& nFees, std::vector<CTxOut> voutPayouts)
+{
+    //  std::vector<CTxOut> vout
+    //  BOOST_FOREACH (const CTxOut& out, voutIn)
+    //      vout.push_back(out);
+    BOOST_FOREACH (const CTxOut& out, voutPayouts)
+        txNew.vout.push_back(out);
+
+    //Masternode payment
+    FillBlockPayee(txNew, nFees, true);   // Kokary: add betting fee
+
+    return true;
+}
+
+bool CWallet::SignCoinStake(CMutableTransaction& txNew, vector<CWalletTx>& vwtxPrev)
+{
+    // Sign
+    int nIn = 0;
+    BOOST_FOREACH (const CWalletTx pcoin, vwtxPrev) {
+        if (!SignSignature(*this, pcoin, txNew, nIn++))
+            return error("CreateCoinStake : failed to sign coinstake");
+    }
 
     return true;
 }
