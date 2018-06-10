@@ -26,9 +26,12 @@
 #include "masternode-payments.h"
 #include "accumulators.h"
 #include "spork.h"
+#include <univalue.h>
 
 #include <boost/thread.hpp>
 #include <boost/tuple/tuple.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/assign/list_of.hpp>
 
 using namespace std;
 
@@ -45,16 +48,15 @@ using namespace std;
 // The COrphan class keeps track of these 'temporary orphans' while
 // CreateBlock is figuring out which transactions to include.
 //
-class COrphan
-{
+
+class COrphan {
 public:
     const CTransaction* ptx;
     set<uint256> setDependsOn;
     CFeeRate feeRate;
     double dPriority;
 
-    COrphan(const CTransaction* ptxIn) : ptx(ptxIn), feeRate(0), dPriority(0)
-    {
+    COrphan(const CTransaction* ptxIn) : ptx(ptxIn), feeRate(0), dPriority(0) {
     }
 };
 
@@ -64,15 +66,16 @@ int64_t nLastCoinStakeSearchInterval = 0;
 
 // We want to sort transactions by priority and fee rate, so:
 typedef boost::tuple<double, CFeeRate, const CTransaction*> TxPriority;
-class TxPriorityCompare
-{
+
+class TxPriorityCompare {
     bool byFee;
 
 public:
-    TxPriorityCompare(bool _byFee) : byFee(_byFee) {}
 
-    bool operator()(const TxPriority& a, const TxPriority& b)
-    {
+    TxPriorityCompare(bool _byFee) : byFee(_byFee) {
+    }
+
+    bool operator()(const TxPriority& a, const TxPriority& b) {
         if (byFee) {
             if (a.get<1>() == b.get<1>())
                 return a.get<0>() < b.get<0>();
@@ -85,8 +88,7 @@ public:
     }
 };
 
-void UpdateTime(CBlockHeader* pblock, const CBlockIndex* pindexPrev)
-{
+void UpdateTime(CBlockHeader* pblock, const CBlockIndex* pindexPrev) {
     pblock->nTime = std::max(pindexPrev->GetMedianTimePast() + 1, GetAdjustedTime());
 
     // Updating time can change work required on testnet:
@@ -94,8 +96,225 @@ void UpdateTime(CBlockHeader* pblock, const CBlockIndex* pindexPrev)
         pblock->nBits = GetNextWorkRequired(pindexPrev, pblock);
 }
 
-CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, bool fProofOfStake)
-{
+int GetBetPaymentCycleBlocks() {
+    // Amount of blocks in a months period of time (using 1 minutes per) = (60*24*30)
+    if (Params().NetworkID() == CBaseChainParams::MAIN) return 1440;
+    //for testing purposes
+
+    return 3; //ten times per day
+}
+
+std::vector<CTxOut> GetBetPayouts() {
+
+    std::vector<CTxOut> vexpectedPayouts;
+    std::vector<std::vector<std::string>> results;
+
+
+    double nFees; 
+    static int nSubmittedHeight = 0; // height at which final budget was submitted last time
+    int nCurrentHeight = chainActive.Height();
+
+    int nBlockStart = nCurrentHeight - nCurrentHeight % GetBetPaymentCycleBlocks() + GetBetPaymentCycleBlocks();
+    if (nSubmittedHeight >= nBlockStart) {
+
+        CBlockIndex* resultsBocksIndex = 0;
+        if (Params().NetworkID() == CBaseChainParams::MAIN) {
+            resultsBocksIndex->GetAncestor(nCurrentHeight - 1440);
+        } else {
+            resultsBocksIndex->GetAncestor(nCurrentHeight - 5);
+        }
+
+        //get list of results
+        while (resultsBocksIndex) {
+            CBlock block;
+            ReadBlockFromDisk(block, resultsBocksIndex);
+
+            BOOST_FOREACH(CTransaction& tx, block.vtx) {
+
+                //bool match = false;
+
+                for (unsigned int i = 0; i < tx.vout.size(); i++) {
+                    const CTxOut& txout = tx.vout[i];
+                    std::string s = txout.scriptPubKey.ToString();
+                    if (s.length() > 0) {
+                        // TODO Remove hard-coded values from this block.
+                        if (0 == strncmp(s.c_str(), "OP_RETURN", 9)) {
+
+                            vector<unsigned char> v = ParseHex(s.substr(9, string::npos));
+                            std::string betDescr(v.begin(), v.end());
+                            std::vector<std::string> strs;
+
+                            boost::split(strs, betDescr, boost::is_any_of("|"));
+
+                            if (strs.size() != 4 || strs[0] != "3") {
+                                continue;
+                            }
+
+                            std::vector<string> entry;
+
+                            //event_id
+                            entry.push_back(strs[2]);
+                            //team_to_win
+                            entry.push_back(strs[3]);
+
+                            results.push_back(entry);
+                        }
+                    }
+                }
+            }
+            resultsBocksIndex = chainActive.Next(resultsBocksIndex);
+        }
+
+
+        //get list of valid results - make sure they havent been paid out already
+        if (Params().NetworkID() == CBaseChainParams::MAIN) {
+            resultsBocksIndex->GetAncestor(nCurrentHeight - 1440);
+        } else {
+            resultsBocksIndex->GetAncestor(nCurrentHeight - 5);
+        }
+
+        //check if there is a results already posted for an event in the last x blocks
+        while (resultsBocksIndex) {
+            CBlock block;
+            ReadBlockFromDisk(block, resultsBocksIndex);
+
+            BOOST_FOREACH(CTransaction& tx, block.vtx) {
+
+                //bool match = false;
+
+                for (unsigned int i = 0; i < tx.vout.size(); i++) {
+                    const CTxOut& txout = tx.vout[i];
+                    std::string s = txout.scriptPubKey.ToString();
+                    if (s.length() > 0) {
+
+                        if (CBitcoinAddress(tx.vout[0].ToString()).ToString() == "TVASr4bm6Rz19udhUWmSGtrrDExCjQdATp") {
+
+                            // TODO Remove hard-coded values from this block.
+                            if (0 == strncmp(s.c_str(), "OP_RETURN", 9)) {
+
+                                vector<unsigned char> v = ParseHex(s.substr(9, string::npos));
+                                std::string betDescr(v.begin(), v.end());
+                                std::vector<std::string> strs;
+
+                                boost::split(strs, betDescr, boost::is_any_of("|"));
+
+                                if (strs.size() != 4 || strs[0] != "4") {
+                                    continue;
+                                }
+
+                                //loop through and check if the eventid matches a result event id
+                                for (unsigned int i = 0; i < results.size(); i++) {
+                                    if (results[i][0] == strs[2]) {
+                                        //remove it from the array
+                                        results.erase(results.begin() + i);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            resultsBocksIndex = chainActive.Next(resultsBocksIndex);
+        }
+
+        // //get list of valid bets to payout
+        CBlockIndex* betsBocksIndex = 0;
+        if (Params().NetworkID() == CBaseChainParams::MAIN) {
+            betsBocksIndex->GetAncestor(nCurrentHeight - 129600);
+        } else {
+            betsBocksIndex->GetAncestor(nCurrentHeight - 60);
+        }
+
+        double latestOddsWin = 0.0;
+        double latestOddsLose = 0.0;
+        double latestOddsDraw = 0.0;
+        std::string winTeam;
+        std::string loseTeam;
+        double betOdds = 0.0;
+        double totalPayout = 0.0;
+
+        while (betsBocksIndex) {
+            CBlock block;
+            ReadBlockFromDisk(block, betsBocksIndex);
+
+            BOOST_FOREACH(CTransaction& tx, block.vtx) {
+
+                //bool match = false;
+
+                for (unsigned int i = 0; i < tx.vout.size(); i++) {
+                    const CTxOut& txout = tx.vout[i];
+                    std::string s = txout.scriptPubKey.ToString();
+                    double betAmount = txout.nValue;
+                    if (s.length() > 0) {
+
+                        // TODO Remove hard-coded values from this block.
+                        if (0 == strncmp(s.c_str(), "OP_RETURN", 9)) {
+
+                            vector<unsigned char> v = ParseHex(s.substr(9, string::npos));
+                            std::string betDescr(v.begin(), v.end());
+                            std::vector<std::string> strs;
+
+                            boost::split(strs, betDescr, boost::is_any_of("|"));
+
+                            if (strs.size() != 4 || ( strs[0] != "2" && strs[0] != "1") ) {
+                                continue;
+                            }
+
+                            if ( tx.vout[0].ToString() == "TVASr4bm6Rz19udhUWmSGtrrDExCjQdATp") {
+
+                                //check for latest event odds and update if needed 
+                                if (results[i][0] == strs[2] && (std::stod(strs[8]) != latestOddsWin || latestOddsLose != std::stod(strs[9]) || latestOddsDraw != std::stod(strs[10]))) {
+                                    latestOddsWin = std::stod (strs[8]);
+                                    latestOddsLose = std::stod (strs[9]);
+                                    latestOddsDraw = std::stod (strs[10]);
+                                }
+
+                                if (results[i][0] == strs[2] /*&& winTeam == NULL*/) {
+                                    winTeam = strs[6];
+                                    loseTeam = strs[7];
+                                }
+                            }
+
+
+                            //loop through and check if the eventid matches a result event id
+                            for (unsigned int i = 0; i < results.size(); i++) {
+                                if (results[i][0] == strs[2] && results[i][1] == strs[3]) {
+
+
+                                    if (results[i][1] == winTeam) {
+                                        betOdds = latestOddsWin;
+                                    } else if (results[i][1] == loseTeam) {
+                                        betOdds = latestOddsLose;
+                                    } else {
+                                        betOdds = latestOddsDraw;
+                                    }
+
+                                    //get the odds from the closest event to the bet.
+                                    totalPayout = betOdds * betAmount * COIN;
+                                    vexpectedPayouts[vexpectedPayouts.size()+1] = CTxOut(totalPayout, GetScriptForDestination(CBitcoinAddress(tx.vout[i].ToString()).Get()));
+
+                                    nFees += totalPayout;  
+
+                                }
+
+                            }
+                        }
+                    }
+                }
+            }
+            betsBocksIndex = chainActive.Next(betsBocksIndex);
+        }
+        
+    } 
+    else {
+        LogPrint("masternode", "CBudgetManager::PayoutResults - nSubmittedHeight(=%ld) < nBlockStart(=%ld) condition not fulfilled.\n", nSubmittedHeight, nBlockStart);
+    }
+
+    //TODO: PASS BACK CORRECT FEES
+    return vexpectedPayouts;
+}
+
+CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, bool fProofOfStake) {
     CReserveKey reservekey(pwallet);
 
     // Create new block
@@ -123,7 +342,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
     txNew.vout.resize(1);
     txNew.vout[0].scriptPubKey = scriptPubKeyIn;
     pblock->vtx.push_back(txNew);
-    pblocktemplate->vTxFees.push_back(-1);   // updated at end
+    pblocktemplate->vTxFees.push_back(-1); // updated at end
     pblocktemplate->vTxSigOps.push_back(-1); // updated at end
 
     // ppcoin: if coinstake available add coinstake tx
@@ -190,12 +409,12 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
         vector<TxPriority> vecPriority;
         vecPriority.reserve(mempool.mapTx.size());
         for (map<uint256, CTxMemPoolEntry>::iterator mi = mempool.mapTx.begin();
-             mi != mempool.mapTx.end(); ++mi) {
+                mi != mempool.mapTx.end(); ++mi) {
             const CTransaction& tx = mi->second.GetTx();
-            if (tx.IsCoinBase() || tx.IsCoinStake() || !IsFinalTx(tx, nHeight)){
+            if (tx.IsCoinBase() || tx.IsCoinStake() || !IsFinalTx(tx, nHeight)) {
                 continue;
             }
-            if(GetAdjustedTime() > GetSporkValue(SPORK_16_ZEROCOIN_MAINTENANCE_MODE) && tx.ContainsZerocoins()){
+            if (GetAdjustedTime() > GetSporkValue(SPORK_16_ZEROCOIN_MAINTENANCE_MODE) && tx.ContainsZerocoins()) {
                 continue;
             }
 
@@ -251,7 +470,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
 
                 int nConf = nHeight - coins->nHeight;
 
-                dPriority += (double)nValueIn * nConf;
+                dPriority += (double) nValueIn * nConf;
             }
             if (fMissingInputs) continue;
 
@@ -313,7 +532,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
             // Prioritise by fee once past the priority size or we run out of high-priority
             // transactions:
             if (!fSortedByFee &&
-                ((nBlockSize + nTxSize >= nBlockPrioritySize) || !AllowFree(dPriority))) {
+                    ((nBlockSize + nTxSize >= nBlockPrioritySize) || !AllowFree(dPriority))) {
                 fSortedByFee = true;
                 comparer = TxPriorityCompare(fSortedByFee);
                 std::make_heap(vecPriority.begin(), vecPriority.end(), comparer);
@@ -378,12 +597,13 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
 
             if (fPrintPriority) {
                 LogPrintf("priority %.1f fee %s txid %s\n",
-                    dPriority, feeRate.ToString(), tx.GetHash().ToString());
+                        dPriority, feeRate.ToString(), tx.GetHash().ToString());
             }
 
             // Add transactions that depend on this one to the priority queue
             if (mapDependers.count(hash)) {
-                BOOST_FOREACH (COrphan* porphan, mapDependers[hash]) {
+
+                BOOST_FOREACH(COrphan* porphan, mapDependers[hash]) {
                     if (!porphan->setDependsOn.empty()) {
                         porphan->setDependsOn.erase(hash);
                         if (porphan->setDependsOn.empty()) {
@@ -404,18 +624,24 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
                 pblock->payee = txNew.vout[1].scriptPubKey;
             }
         } else {
+            
+            std::vector<CTxOut> voutPayouts;
+            //std::vector<Any> betPayoutDetails;
 
-            std::vector<CTxOut> voutPayouts(2);
-            voutPayouts[0] = CTxOut(21.12 * COIN, GetScriptForDestination(CBitcoinAddress("Wk5KNqBJusWwe12PzDYdu7o7HmSwm8AhvM").Get()));
-            voutPayouts[1] = CTxOut(42.24 * COIN, GetScriptForDestination(CBitcoinAddress("Wk5KNqBJusWwe12PzDYdu7o7HmSwm8AhvM").Get()));
+            voutPayouts = GetBetPayouts();
+            //nFees = betPayoutDetails[0];
+            //voutPayouts = betPayoutDetails[1];
 
-            nFees = (21.12+42.24)/94*3*COIN; // Betting payouts are 94% of betting amount. 3% of the betting amount is MN fee.
+            nFees = (21.12 + 42.24) / 94 * 3 * COIN; // Betting payouts are 94% of betting amount. 3% of the betting amount is MN fee.
+            
             //Masternode payments and betting payouts
-            pwallet->FillCoinStake(txCoinStake, nFees, voutPayouts);   // Kokary: add betting fee
+            pwallet->FillCoinStake(txCoinStake, nFees, voutPayouts); // Kokary: add betting fee
 
             //Sign with updated tx
             pwallet->SignCoinStake(txCoinStake, vwtxPrev);
-            pblock->vtx[1]=CTransaction(txCoinStake);
+            pblock->vtx[1] = CTransaction(txCoinStake);
+
+            
 
         }
 
@@ -437,7 +663,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
         pblock->nBits = GetNextWorkRequired(pindexPrev, pblock);
         pblock->nNonce = 0;
         uint256 nCheckpoint = 0;
-        if(fZerocoinActive && !CalculateAccumulatorCheckpoint(nHeight, nCheckpoint)){
+        if (fZerocoinActive && !CalculateAccumulatorCheckpoint(nHeight, nCheckpoint)) {
             LogPrintf("%s: failed to get accumulator checkpoint\n", __func__);
         }
         pblock->nAccumulatorCheckpoint = nCheckpoint;
@@ -454,8 +680,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
     return pblocktemplate.release();
 }
 
-void IncrementExtraNonce(CBlock* pblock, CBlockIndex* pindexPrev, unsigned int& nExtraNonce)
-{
+void IncrementExtraNonce(CBlock* pblock, CBlockIndex* pindexPrev, unsigned int& nExtraNonce) {
     // Update nExtraNonce
     static uint256 hashPrevBlock;
     if (hashPrevBlock != pblock->hashPrevBlock) {
@@ -480,8 +705,7 @@ void IncrementExtraNonce(CBlock* pblock, CBlockIndex* pindexPrev, unsigned int& 
 double dHashesPerSec = 0.0;
 int64_t nHPSTimerStart = 0;
 
-CBlockTemplate* CreateNewBlockWithKey(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfStake)
-{
+CBlockTemplate* CreateNewBlockWithKey(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfStake) {
     CPubKey pubkey;
     if (!reservekey.GetReservedKey(pubkey))
         return NULL;
@@ -490,8 +714,7 @@ CBlockTemplate* CreateNewBlockWithKey(CReserveKey& reservekey, CWallet* pwallet,
     return CreateNewBlock(scriptPubKey, pwallet, fProofOfStake);
 }
 
-bool ProcessBlockFound(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
-{
+bool ProcessBlockFound(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey) {
     LogPrintf("%s\n", pblock->ToString());
     LogPrintf("generated %s\n", FormatMoney(pblock->vtx[0].vout[0].nValue));
 
@@ -530,8 +753,7 @@ bool fGenerateBitcoins = false;
 
 // ***TODO*** that part changed in bitcoin, we are using a mix with old one here for now
 
-void BitcoinMiner(CWallet* pwallet, bool fProofOfStake)
-{
+void BitcoinMiner(CWallet* pwallet, bool fProofOfStake) {
     LogPrintf("WagerrMiner started\n");
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
     RenameThread("wagerr-miner");
@@ -557,8 +779,8 @@ void BitcoinMiner(CWallet* pwallet, bool fProofOfStake)
                 continue;
             }
 
-            while (chainActive.Tip()->nTime < 1471482000 || vNodes.empty() || pwallet->IsLocked() || !fMintableCoins || 
-                   nReserveBalance >= pwallet->GetBalance() || !masternodeSync.IsSynced()) {
+            while (chainActive.Tip()->nTime < 1471482000 || vNodes.empty() || pwallet->IsLocked() || !fMintableCoins ||
+                    nReserveBalance >= pwallet->GetBalance() || !masternodeSync.IsSynced()) {
                 nLastCoinStakeSearchInterval = 0;
                 MilliSleep(5000);
                 if (!fGenerateBitcoins && !fProofOfStake)
@@ -567,7 +789,7 @@ void BitcoinMiner(CWallet* pwallet, bool fProofOfStake)
 
             if (mapHashedBlocks.count(chainActive.Tip()->nHeight)) //search our map of hashed blocks, see if bestblock has been hashed yet
             {
-                if (GetTime() - mapHashedBlocks[chainActive.Tip()->nHeight] < max(pwallet->nHashInterval, (unsigned int)1)) // wait half of the nHashDrift with max wait of 3 minutes
+                if (GetTime() - mapHashedBlocks[chainActive.Tip()->nHeight] < max(pwallet->nHashInterval, (unsigned int) 1)) // wait half of the nHashDrift with max wait of 3 minutes
                 {
                     MilliSleep(5000);
                     continue;
@@ -608,7 +830,7 @@ void BitcoinMiner(CWallet* pwallet, bool fProofOfStake)
         }
 
         LogPrintf("Running WagerrMiner with %u transactions in block (%u bytes)\n", pblock->vtx.size(),
-            ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION));
+                ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION));
 
         //
         // Search
@@ -688,10 +910,9 @@ void BitcoinMiner(CWallet* pwallet, bool fProofOfStake)
     }
 }
 
-void static ThreadBitcoinMiner(void* parg)
-{
+void static ThreadBitcoinMiner(void* parg) {
     boost::this_thread::interruption_point();
-    CWallet* pwallet = (CWallet*)parg;
+    CWallet* pwallet = (CWallet*) parg;
     try {
         BitcoinMiner(pwallet, false);
         boost::this_thread::interruption_point();
@@ -704,8 +925,7 @@ void static ThreadBitcoinMiner(void* parg)
     LogPrintf("ThreadBitcoinMiner exiting\n");
 }
 
-void GenerateBitcoins(bool fGenerate, CWallet* pwallet, int nThreads)
-{
+void GenerateBitcoins(bool fGenerate, CWallet* pwallet, int nThreads) {
     static boost::thread_group* minerThreads = NULL;
     fGenerateBitcoins = fGenerate;
 

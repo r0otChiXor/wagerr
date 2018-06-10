@@ -19,6 +19,7 @@
 #include "masternode-budget.h"
 #include "masternode-payments.h"
 #include "masternodeman.h"
+#include "miner.h"
 #include "merkleblock.h"
 #include "net.h"
 #include "obfuscation.h"
@@ -2165,14 +2166,15 @@ int64_t GetBlockValue(int nHeight)
 }
 
 int64_t GetBlockPayouts(int nHeight, std::vector<CTxOut>& vexpectedPayouts){
-    vexpectedPayouts.resize(2);
-    
-    vexpectedPayouts[0] = CTxOut(21.12*COIN, GetScriptForDestination(CBitcoinAddress("Wk5KNqBJusWwe12PzDYdu7o7HmSwm8AhvM").Get()));
-    vexpectedPayouts[1] = CTxOut(42.24*COIN, GetScriptForDestination(CBitcoinAddress("Wk5KNqBJusWwe12PzDYdu7o7HmSwm8AhvM").Get()));
 
-    CAmount nFees = (21.12+42.24)/94*3*COIN; // Betting payouts are 94% of betting amount. 3% of the betting amount is MN fee.
+    CAmount nPayout = 0;
+    for(unsigned i = 0; i < vexpectedPayouts.size(); i++){
+        nPayout += vexpectedPayouts[i].nValue;
+    }
 
-    return nFees + 21.12*COIN + 42.24*COIN;
+    CAmount nFees = nPayout/94*3*COIN; // Betting payouts are 94% of betting amount. 3% of the betting amount is MN fee.
+
+    return nFees;
 }
 
 int64_t GetMasternodePayment(int nHeight, int64_t blockValue, int nMasternodeCount)
@@ -3252,8 +3254,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (block.IsProofOfWork())
         nExpectedMint += nFees;
 
-    std::vector<CTxOut> vexpectedPayouts;
-    nExpectedMint +=  GetBlockPayouts(pindex->pprev->nHeight, vexpectedPayouts);
+    std::vector<CTxOut> vexpectedPayouts = GetBetPayouts();
+    nExpectedMint += GetBlockPayouts(pindex->pprev->nHeight, vexpectedPayouts);
 
     if (!IsBlockValueValid(block, nExpectedMint, pindex->nMint)) {
         return state.DoS(100,
@@ -4159,13 +4161,14 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
             REJECT_INVALID, "block-version");
 
         // WagerrTor - disable reject block as our blocks are in version 4 since block 1
-        /* this check can be cleaned up (**TODO** after test)
-        /*
-    } else {
-        if (block.nVersion >= Params().Zerocoin_HeaderVersion())
-            return state.DoS(50, error("CheckBlockHeader() : block version must be below 4 before ZerocoinStartHeight"),
-            REJECT_INVALID, "block-version");
-        */
+        //this check can be cleaned up (**TODO** after test)
+        
+    //} 
+    //else {
+    //   if (block.nVersion >= Params().Zerocoin_HeaderVersion()){
+    //        return state.DoS(50, error("CheckBlockHeader() : block version must be below 4 before ZerocoinStartHeight"),
+    //        REJECT_INVALID, "block-version");
+    //    }
     }
 
     return true;

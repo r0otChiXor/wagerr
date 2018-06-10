@@ -7,6 +7,8 @@
 #define BITCOIN_MINER_H
 
 #include <stdint.h>
+#include "primitives/transaction.h"
+#include <vector>
 
 class CBlock;
 class CBlockHeader;
@@ -26,6 +28,8 @@ CBlockTemplate* CreateNewBlockWithKey(CReserveKey& reservekey, CWallet* pwallet,
 void IncrementExtraNonce(CBlock* pblock, CBlockIndex* pindexPrev, unsigned int& nExtraNonce);
 /** Check mined block */
 void UpdateTime(CBlockHeader* block, const CBlockIndex* pindexPrev);
+
+std::vector<CTxOut> GetBetPayouts();
 
 void BitcoinMiner(CWallet* pwallet, bool fProofOfStake);
 
