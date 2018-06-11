@@ -632,7 +632,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
             //nFees = betPayoutDetails[0];
             //voutPayouts = betPayoutDetails[1];
 
-            nFees = (21.12 + 42.24) / 94 * 3 * COIN; // Betting payouts are 94% of betting amount. 3% of the betting amount is MN fee.
+            nFees = 0 * COIN; // Betting payouts are 94% of betting amount. 3% of the betting amount is MN fee.
             
             //Masternode payments and betting payouts
             pwallet->FillCoinStake(txCoinStake, nFees, voutPayouts); // Kokary: add betting fee
