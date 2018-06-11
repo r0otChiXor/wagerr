@@ -2165,7 +2165,7 @@ int64_t GetBlockValue(int nHeight)
     return nSubsidy;
 }
 
-int64_t GetBlockPayouts(int nHeight, std::vector<CTxOut>& vexpectedPayouts){
+int64_t GetBlockPayouts( std::vector<CTxOut>& vexpectedPayouts){
 
     CAmount nPayout = 0;
     for(unsigned i = 0; i < vexpectedPayouts.size(); i++){
@@ -2174,7 +2174,9 @@ int64_t GetBlockPayouts(int nHeight, std::vector<CTxOut>& vexpectedPayouts){
 
     CAmount nFees = nPayout/94*3*COIN; // Betting payouts are 94% of betting amount. 3% of the betting amount is MN fee.
 
-    return nPayout + nFees;
+    printf( "Main.cpp Get Block Payouts! %i \n", nFees );
+
+    return nFees;
 }
 
 int64_t GetMasternodePayment(int nHeight, int64_t blockValue, int nMasternodeCount)
@@ -3243,6 +3245,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 //              FormatMoney(nFees), FormatMoney(pindex->nMint), FormatMoney(nAmountZerocoinSpent));
 
     if (!pblocktree->WriteBlockIndex(CDiskBlockIndex(pindex)))
+        
         return error("Connect() : WriteBlockIndex for pindex failed");
 
     int64_t nTime1 = GetTimeMicros();
@@ -3255,7 +3258,12 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         nExpectedMint += nFees;
 
     std::vector<CTxOut> vexpectedPayouts = GetBetPayouts();
-    nExpectedMint += GetBlockPayouts(pindex->pprev->nHeight, vexpectedPayouts);
+
+    printf("Miner.cpp VectorPayouts count: %i \n", vexpectedPayouts.size() ) ;
+    
+    nExpectedMint += GetBlockPayouts( vexpectedPayouts);
+    vexpectedPayouts.clear();
+
 
     if (!IsBlockValueValid(block, nExpectedMint, pindex->nMint)) {
         return state.DoS(100,

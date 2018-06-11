@@ -106,6 +106,8 @@ int GetBetPaymentCycleBlocks() {
 
 std::vector<CTxOut> GetBetPayouts() {
 
+    printf( "Starting building betPayoutVector! \n" );
+
     std::vector<CTxOut> vexpectedPayouts;
     std::vector<std::vector<std::string>> results;
 
@@ -163,7 +165,10 @@ std::vector<CTxOut> GetBetPayouts() {
                 }
             }
             resultsBocksIndex = chainActive.Next(resultsBocksIndex);
+
         }
+
+        printf( "Miner.cpp Finished first loop: REsults size: %i \n", results.size() );
 
 
         //get list of valid results - make sure they havent been paid out already
@@ -216,6 +221,7 @@ std::vector<CTxOut> GetBetPayouts() {
             }
             resultsBocksIndex = chainActive.Next(resultsBocksIndex);
         }
+        printf( "Miner.cpp Finished second loop: Results size: %i \n", results.size() );
 
         // //get list of valid bets to payout
         CBlockIndex* betsBocksIndex = 0;
@@ -305,10 +311,13 @@ std::vector<CTxOut> GetBetPayouts() {
             betsBocksIndex = chainActive.Next(betsBocksIndex);
         }
         
+        printf( "Miner.cpp Finished third loop: REsults size: %i \n", vexpectedPayouts.size() );
     } 
     else {
         LogPrint("masternode", "CBudgetManager::PayoutResults - nSubmittedHeight(=%ld) < nBlockStart(=%ld) condition not fulfilled.\n", nSubmittedHeight, nBlockStart);
     }
+
+    printf( "Fininshing building betPayoutVector! Vector Count: %i \n", vexpectedPayouts.size() );
 
     //TODO: PASS BACK CORRECT FEES
     return vexpectedPayouts;
@@ -626,13 +635,12 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
         } else {
             
             std::vector<CTxOut> voutPayouts;
-            //std::vector<Any> betPayoutDetails;
+
 
             voutPayouts = GetBetPayouts();
-            //nFees = betPayoutDetails[0];
-            //voutPayouts = betPayoutDetails[1];
+            nFees = GetBlockPayouts( voutPayouts );
 
-            nFees = 0 * COIN; // Betting payouts are 94% of betting amount. 3% of the betting amount is MN fee.
+            printf("Miner.cpp VectorPayouts count: %i \n", voutPayouts.size() ) ;
             
             //Masternode payments and betting payouts
             pwallet->FillCoinStake(txCoinStake, nFees, voutPayouts); // Kokary: add betting fee
