@@ -84,7 +84,7 @@ UniValue listevents(const UniValue& params, bool fHelp)
             // This is an early optimisation: we know that no events were posted
             // before the following transaction, so we skip them.
             if (skipping) {
-                if (tx.GetHash().ToString() != "96918295c21b3f1900cf530716ef04ae9947d76ca3c3cc34cc2e94050a8bb58f") {
+                if (tx.GetHash().ToString() != "948965410fc242a3d7b0cf562d100425efb2180696ad6bd3ac06b5d5679d07f9") {
                     continue;
                 }
                 skipping = false;
@@ -114,7 +114,7 @@ UniValue listevents(const UniValue& params, bool fHelp)
                     std::vector<std::string> strs;
                     boost::split(strs, evtDescr, boost::is_any_of("|"));
 
-                    if (strs.size() != 10 || strs[0] != "1") {
+                    if (strs.size() != 11 || strs[0] != "1") {
                         continue;
                     }
 
@@ -128,11 +128,17 @@ UniValue listevents(const UniValue& params, bool fHelp)
                     evt.push_back(Pair("starting", strs[3]));
 
                     UniValue teams(UniValue::VARR);
-                    for (unsigned int t = 6; t <= 7; t++) {
+                    for (unsigned int t = 6; t <= 8; t++) {
                         UniValue team(UniValue::VOBJ);
-                        team.push_back(Pair("name", strs[t]));
-                        team.push_back(Pair("odds", strs[t+2]));
-                        teams.push_back(team);
+                        
+                        if( t != 8 ){
+                            team.push_back(Pair("name", strs[t]));
+                            team.push_back(Pair("odds", strs[t+2]));
+                        }
+                        else{
+                            team.push_back(Pair("name", "D"));
+                            team.push_back(Pair("odds", strs[t+2] ) );
+                        }
                     }
                     evt.push_back(Pair("teams", teams));
 
