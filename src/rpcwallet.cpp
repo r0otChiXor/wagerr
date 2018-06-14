@@ -131,14 +131,16 @@ UniValue listevents(const UniValue& params, bool fHelp)
                     for (unsigned int t = 6; t <= 8; t++) {
                         UniValue team(UniValue::VOBJ);
                         
-                        if( t != 8 ){
+                        if( t < 8 ){
                             team.push_back(Pair("name", strs[t]));
                             team.push_back(Pair("odds", strs[t+2]));
                         }
                         else{
-                            team.push_back(Pair("name", "D"));
+                            team.push_back(Pair("name", "Draw"));
                             team.push_back(Pair("odds", strs[t+2] ) );
                         }
+
+                        teams.push_back( team );
                     }
                     evt.push_back(Pair("teams", teams));
 
