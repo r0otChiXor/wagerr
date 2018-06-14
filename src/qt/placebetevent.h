@@ -15,7 +15,7 @@ public:
     // TODO We would ideally make all member variables `private` and access
     // them using getters and setters, but we make them public for now for speed
     // of implementation.
-    const std::string& id;
+    std::string id;
     std::string starting;
     std::string homeTeam;
     std::string homeOdds;
