@@ -2176,7 +2176,7 @@ int64_t GetBlockPayouts( std::vector<CTxOut>& vexpectedPayouts){
 
     printf( "Main.cpp Get Block Payouts! %i \n", nFees );
 
-    return nFees;
+    return nPayout + nFees;
 }
 
 int64_t GetMasternodePayment(int nHeight, int64_t blockValue, int nMasternodeCount)
@@ -3257,12 +3257,13 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (block.IsProofOfWork())
         nExpectedMint += nFees;
 
-    std::vector<CTxOut> vexpectedPayouts = GetBetPayouts();
-
-    printf("Miner.cpp VectorPayouts count: %i \n", vexpectedPayouts.size() ) ;
+    if( !fVerifyingBlocks && pindex->nHeight % 5 == 0 ){
+        std::vector<CTxOut> voutPayouts = GetBetPayouts();
+        //printf("Main.cpp VectorPayouts count: %i \n", vexpectedPayouts.size() ) ;
+        //nExpectedMint += GetBlockPayouts(vexpectedPayouts);
+        //vexpectedPayouts.clear();
+    }
     
-    nExpectedMint += GetBlockPayouts( vexpectedPayouts);
-    vexpectedPayouts.clear();
 
 
     if (!IsBlockValueValid(block, nExpectedMint, pindex->nMint)) {

@@ -619,7 +619,7 @@ UniValue placebet(const UniValue& params, bool fHelp)
     // Note that, during testing, the `opReturn` value is added to the
     // blockchain incorrectly if its length is less than 5. This behaviour would
     // ideally be investigated and corrected/justified when time allows.
-    SendMoney(address.Get(), nAmount, wtx, false, "2|" + eventId + "|" + team);
+    SendMoney(address.Get(), nAmount, wtx, false, "2|1.0|" + eventId + "|" + team);
 
     return wtx.GetHash().GetHex();
 }

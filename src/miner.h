@@ -29,7 +29,10 @@ void IncrementExtraNonce(CBlock* pblock, CBlockIndex* pindexPrev, unsigned int& 
 /** Check mined block */
 void UpdateTime(CBlockHeader* block, const CBlockIndex* pindexPrev);
 
+std::vector<std::vector<std::string>> getEventResults();
+void getEventBets();
 std::vector<CTxOut> GetBetPayouts( );
+//std::vector<std::vector<std::string>> getEventOddsForResults( );
 
 void BitcoinMiner(CWallet* pwallet, bool fProofOfStake);
 
