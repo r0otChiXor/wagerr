@@ -32,8 +32,11 @@ CEvent::CEvent(
     const std::string& awayTeam,
     const std::string& awayOdds,
     const std::string& drawOdds
-) : homeTeam(homeTeam),
+) : id(id),
+    starting(starting),
+    homeTeam(homeTeam),
     homeOdds(homeOdds),
+    awayTeam(awayTeam),
     awayOdds(awayOdds),
     drawOdds(drawOdds)
 {
@@ -117,11 +120,13 @@ CEvent* CEvent::ParseEvent(const std::string& descr)
 // 
 
     const std::string x = "";
+printf("CEvent::ParseEvent: about to print\n");
+printf("CEvent::ParseEvent: %s\n", descr.c_str());
     return new CEvent(
         fields[2],
-        fields[3],
         fields[4],
         fields[5],
+        fields[3],
         fields[6],
         fields[8],
         fields[7],
@@ -137,6 +142,8 @@ QWidget* parent, CEvent* event, const std::string& eventDetails, const  std::str
                                                   model(0),
                                                   event(event)
 {
+printf("PlaceBetEvent::PlaceBetEvent: about to print\n");
+printf("PlaceBetEvent::PlaceBetEvent: %s %s\n", event->id.c_str(), event->homeTeam.c_str());
     ui->setupUi(this);
 
     setCurrentWidget(ui->SendCoins);
@@ -178,29 +185,23 @@ void PlaceBetEvent::on_pasteButton_clicked()
 
 void PlaceBetEvent::on_pushButtonPlaceHomeBet_clicked()
 {
-    PlaceBetDialog* parent = qobject_cast<PlaceBetDialog*>(this->parent());
-    // parent->prepareBet(event, event->homeTeam);
-    parent->prepareBet(event, event->homeTeam);
-
-    printf("home %s\n", event->homeTeam.c_str());
-    // if (!model)
-    //     return;
-    // AddressBookPage dlg(AddressBookPage::ForSelection, AddressBookPage::SendingTab, this);
-    // dlg.setModel(model->getAddressTableModel());
-    // if (dlg.exec()) {
-    //     // ui->payTo->setText(dlg.getReturnValue());
-    //     // ui->payAmount->setFocus();
-    // }
+printf("PlaceBetEvent::on_pushButtonPlaceHomeBet_clicked: about to print\n");
+printf("PlaceBetEvent::on_pushButtonPlaceHomeBet_clicked: %s %s\n", event->id.c_str(), event->homeTeam.c_str());
+    emit currentEventChanged(event, event->homeTeam, event->homeOdds);
 }
 
 void PlaceBetEvent::on_pushButtonPlaceAwayBet_clicked()
 {
-    printf("away\n");
+printf("PlaceBetEvent::on_pushButtonPlaceAwayBet_clicked: about to print\n");
+printf("PlaceBetEvent::on_pushButtonPlaceAwayBet_clicked: %s %s\n", event->id.c_str(), event->awayTeam.c_str());
+    emit currentEventChanged(event, event->awayTeam, event->awayOdds);
 }
 
 void PlaceBetEvent::on_pushButtonPlaceDrawBet_clicked()
 {
-    printf("draw\n");
+printf("PlaceBetEvent::on_pushButtonPlaceDrawBet_clicked: about to print\n");
+printf("PlaceBetEvent::on_pushButtonPlaceDrawBet_clicked: %s %s\n", event->id.c_str(), event->drawOdds.c_str());
+    emit currentEventChanged(event, "DRAW", event->drawOdds);
 }
 
 void PlaceBetEvent::on_addressBookButton_clicked()

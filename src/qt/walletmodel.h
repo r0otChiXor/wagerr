@@ -164,6 +164,8 @@ public:
     // Send coins to a list of recipients
     SendCoinsReturn sendCoins(WalletModelTransaction& transaction);
 
+    StatusCode placeBet(CAmount amount, const std::string& eventId, const std::string& teamToWin);
+
     // Wallet encryption
     bool setWalletEncrypted(bool encrypted, const SecureString& passphrase);
     // Passphrase only needed when unlocking

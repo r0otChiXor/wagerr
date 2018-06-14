@@ -33,14 +33,15 @@ PlaceBetDialog::PlaceBetDialog(QWidget* parent) : QDialog(parent),
                                                   clientModel(0),
                                                   model(0),
                                                   fNewRecipientAllowed(true),
-                                                  fFeeMinimized(true)
+                                                  fFeeMinimized(true),
+                                                  betEvent(0)
 {
     ui->setupUi(this);
 
 #ifdef Q_OS_MAC // Icons on push buttons are very uncommon on Mac
     ui->addButton->setIcon(QIcon());
     ui->clearButton->setIcon(QIcon());
-    ui->sendButton->setIcon(QIcon());
+    ui->placeBetButton->setIcon(QIcon());
 #endif
 
     // GUIUtil::setupAddressWidget(ui->lineEditCoinControlChange, this);
@@ -212,12 +213,17 @@ PlaceBetDialog::~PlaceBetDialog()
     delete ui;
 }
 
-void PlaceBetDialog::on_sendButton_clicked()
+void PlaceBetDialog::on_placeBetButton_clicked()
 {
+printf("on_placeBetButton_clicked\n");
+    if (!betEvent) { // TODO Popup
+printf("on_placeBetButton_clicked: !betEvent\n");
+        return;
+    }
     // if (!model || !model->getOptionsModel())
     //     return;
 
-    // QList<SendCoinsRecipient> recipients;
+    QList<SendCoinsRecipient> recipients;
     // bool valid = true;
 
     // for (int i = 0; i < ui->events->count(); ++i) {
@@ -263,7 +269,7 @@ void PlaceBetDialog::on_sendButton_clicked()
     //     // CoinControlDialog::coinControl->nSplitBlock = int(ui->splitBlockLineEdit->text().toInt());
 
     // QString strFunds = "";
-    // QString strFee = "";
+    QString strFee = "";
     // recipients[0].inputType = ALL_COINS;
 
     // if (ui->checkSwiftTX->isChecked()) {
@@ -276,7 +282,7 @@ void PlaceBetDialog::on_sendButton_clicked()
 
 
     // // Format confirmation message
-    // QStringList formatted;
+    QStringList formatted;
     // foreach (const SendCoinsRecipient& rcp, recipients) {
     //     // generate bold amount string
     //     QString amount = "<b>" + BitcoinUnits::formatHtmlWithUnit(model->getOptionsModel()->getDisplayUnit(), rcp.amount);
@@ -331,95 +337,67 @@ void PlaceBetDialog::on_sendButton_clicked()
     //     return;
     // }
     // // already unlocked or not encrypted at all
-    // send(recipients, strFee, formatted);
+    CAmount amount = ui->payAmount->value();
+    std::string eventId = betEvent->id;
+    std::string team = betTeamToWin;
+printf("on_placeBetButton_clicked: about to print\n");
+printf("on_placeBetButton_clicked: betEvent: %d %s %s\n", amount, eventId.c_str(), team.c_str());
+    send(amount, eventId, team);
 }
 
-void PlaceBetDialog::send(QList<SendCoinsRecipient> recipients, QString strFee, QStringList formatted)
+void PlaceBetDialog::send(CAmount amount, const std::string& eventId, const std::string& teamToWin)
 {
-    // prepare transaction for getting txFee earlier
-    WalletModelTransaction currentTransaction(recipients);
-    WalletModel::SendCoinsReturn prepareStatus;
-    if (model->getOptionsModel()->getCoinControlFeatures()) // coin control enabled
-        prepareStatus = model->prepareTransaction(currentTransaction, CoinControlDialog::coinControl);
-    else
-        prepareStatus = model->prepareTransaction(currentTransaction);
-
-    // process prepareStatus and on error generate message shown to user
-    processPlaceBetReturn(prepareStatus,
-        BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), currentTransaction.getTransactionFee()), true);
-
-    if (prepareStatus.status != WalletModel::OK) {
-        fNewRecipientAllowed = true;
-        return;
-    }
-
-    CAmount txFee = currentTransaction.getTransactionFee();
     QString questionString = tr("Are you sure you want to send?");
     questionString.append("<br /><br />%1");
 
-    if (txFee > 0) {
-        // append fee string if a fee is required
-        questionString.append("<hr /><span style='color:#aa0000;'>");
-        questionString.append(BitcoinUnits::formatHtmlWithUnit(model->getOptionsModel()->getDisplayUnit(), txFee));
-        questionString.append("</span> ");
-        questionString.append(tr("are added as transaction fee"));
-        questionString.append(" ");
-        questionString.append(strFee);
-
-        // append transaction size
-        questionString.append(" (" + QString::number((double)currentTransaction.getTransactionSize() / 1000) + " kB)");
+printf("PlaceBetDialog::send\n");
+    if (!betEvent) {
+printf("PlaceBetDialog::send: !betEvent\n");
+        // TODO Present the user with an appropriate error message.
+        return;
     }
 
-    // add total amount in all subdivision units
-    questionString.append("<hr />");
-    CAmount totalAmount = currentTransaction.getTotalTransactionAmount() + txFee;
-    QStringList alternativeUnits;
-    foreach (BitcoinUnits::Unit u, BitcoinUnits::availableUnits()) {
-        if (u != model->getOptionsModel()->getDisplayUnit())
-            alternativeUnits.append(BitcoinUnits::formatHtmlWithUnit(u, totalAmount));
-    }
-
-    // Show total amount + all alternative units
-    questionString.append(tr("Total Amount = <b>%1</b><br />= %2")
-                              .arg(BitcoinUnits::formatHtmlWithUnit(model->getOptionsModel()->getDisplayUnit(), totalAmount))
-                              .arg(alternativeUnits.join("<br />= ")));
-
-    // Limit number of displayed events
-    int messageEntries = formatted.size();
-    int displayedEntries = 0;
-    for (int i = 0; i < formatted.size(); i++) {
-        if (i >= MAX_SEND_POPUP_ENTRIES2) {
-            formatted.removeLast();
-            i--;
-        } else {
-            displayedEntries = i + 1;
-        }
-    }
-    questionString.append("<hr />");
-    questionString.append(tr("<b>(%1 of %2 events displayed)</b>").arg(displayedEntries).arg(messageEntries));
+//     // if (txFee > 0) {
+//     if (true) {
+//         // append fee string if a fee is required
+//         questionString.append("<hr /><span style='color:#aa0000;'>");
+//         // questionString.append(BitcoinUnits::formatHtmlWithUnit(model->getOptionsModel()->getDisplayUnit(), txFee));
+// // questionString.append(BitcoinUnits::formatHtmlWithUnit(model->getOptionsModel()->getDisplayUnit(), 10.506));
+//         questionString.append("</span> ");
+//         questionString.append(tr("are added as transaction fee"));
+//         questionString.append(" ");
+//         questionString.append(strFee);
+// 
+//         // // append transaction size
+//         // questionString.append(" (" + QString::number((double)currentTransaction.getTransactionSize() / 1000) + " kB)");
+//         questionString.append(" (" + QString::number((double)10.205 / 1000) + " kB)");
+//     }
 
     // Display message box
-    QMessageBox::StandardButton retval = QMessageBox::question(this, tr("Confirm send coins"),
-        questionString.arg(formatted.join("<br />")),
+    QMessageBox::StandardButton retval = QMessageBox::question(this, tr("Confirm place bet"),
+        questionString.arg("" /*formatted.join("<br />")*/),
         QMessageBox::Yes | QMessageBox::Cancel,
         QMessageBox::Cancel);
 
     if (retval != QMessageBox::Yes) {
-        fNewRecipientAllowed = true;
+        // fNewRecipientAllowed = true;
         return;
     }
 
+printf("PlaceBetDialog::send: about to print\n");
+printf("PlaceBetDialog::send: %d %s %s\n", amount, eventId, teamToWin);
     // now send the prepared transaction
-    WalletModel::SendCoinsReturn sendStatus = model->sendCoins(currentTransaction);
+// get amount from text box
+    WalletModel::StatusCode sendStatus = model->placeBet(amount, eventId, teamToWin);
     // process sendStatus and on error generate message shown to user
-    processPlaceBetReturn(sendStatus);
+    // ---> processPlaceBetReturn(sendStatus);
 
-    if (sendStatus.status == WalletModel::OK) {
-        accept();
-        CoinControlDialog::coinControl->UnSelectAll();
-        coinControlUpdateLabels();
-    }
-    fNewRecipientAllowed = true;
+    // if (sendStatus.status == WalletModel::OK) {
+    //     accept();
+    //     CoinControlDialog::coinControl->UnSelectAll();
+    //     coinControlUpdateLabels();
+    // }
+    // fNewRecipientAllowed = true;
 }
 
 void PlaceBetDialog::clear()
@@ -443,14 +421,90 @@ void PlaceBetDialog::accept()
     clear();
 }
 
-void PlaceBetDialog::prepareBet(CEvent* event, const std::string& teamToWin)
+void PlaceBetDialog::prepareBet(CEvent* event, const std::string& teamToWin, const std::string& oddsToWin)
 {
-    printf("one\n");
-    printf(">>>%s\n", teamToWin.c_str());
-    printf("two\n");
-    QString x = QString::fromStdString(teamToWin);
-    printf("three\n");
-    ui->eventLabel->setText(x);
+    std::map<std::string, std::string> countryNames;
+    countryNames.insert(make_pair("ARG", "Argentina"));
+    countryNames.insert(make_pair("AUS", "Australia"));
+    countryNames.insert(make_pair("BRA", "Brazil"));
+    countryNames.insert(make_pair("CRC", "Costa Rica"));
+    countryNames.insert(make_pair("DEN", "Denmark"));
+    countryNames.insert(make_pair("EGY", "Egypt"));
+    countryNames.insert(make_pair("ESP", "Spain"));
+    countryNames.insert(make_pair("FRA", "France"));
+    countryNames.insert(make_pair("GER", "Germany"));
+    countryNames.insert(make_pair("IRN", "Iran"));
+    countryNames.insert(make_pair("ISL", "Iceland"));
+    countryNames.insert(make_pair("KSA", "Kazakhstan"));
+    countryNames.insert(make_pair("MAR", "Morocco"));
+    countryNames.insert(make_pair("MEX", "Mexica"));
+    countryNames.insert(make_pair("PER", "Peru"));
+    countryNames.insert(make_pair("POR", "Portugal"));
+    countryNames.insert(make_pair("RUS", "Russia"));
+    countryNames.insert(make_pair("SRB", "Serbia"));
+    countryNames.insert(make_pair("URU", "Uruguay"));
+
+    std::string evtDes = "";
+
+    std::map<std::string, std::string>::iterator it;
+    it = countryNames.find(teamToWin);
+    std::string team = teamToWin;
+    if (teamToWin == "DRAW") {
+        evtDes += "Draw ";
+    } else if (it == countryNames.end()) {
+        evtDes += teamToWin;
+        evtDes += " to win ";
+    } else {
+        evtDes = it->second;
+        evtDes += " to win ";
+    }
+    evtDes += oddsToWin;
+    evtDes += "< br/>\n";
+
+    it = countryNames.find(event->homeTeam);
+    team = event->homeTeam;
+    if (it != countryNames.end()) {
+        team = it->second;
+    }
+    evtDes += team;
+    evtDes += " V ";
+    it = countryNames.find(event->awayTeam);
+    team = event->awayTeam;
+    if (it != countryNames.end()) {
+        team = it->second;
+    }
+    evtDes += team;
+    evtDes += "   ";
+
+    // evtDes += evtDescr;
+    // evtDes += " ";
+    time_t time = (time_t) std::strtol(event->starting.c_str(), nullptr, 10);
+    tm *ptm = std::gmtime(&time);
+    static const char mon_name[][4] = {
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Aug", "Nov", "Dec"
+    };
+    char result[22];
+    // evtDes += evtDescr;
+    sprintf(
+        result,
+        "%.2d:%.2d UTC+0   %.2d %3s",
+        ptm->tm_hour,
+        ptm->tm_min,
+        ptm->tm_mday,
+        mon_name[ptm->tm_mon]
+    );
+    evtDes += result;
+    // printf(">>> %s\n", evtDescr.c_str());
+
+    // set local member - confirm in text - event + odds
+    betEvent = event;
+    betTeamToWin = teamToWin;
+    betOddsToWin = oddsToWin;
+printf("PlaceBetDialog::prepareBet: about to print\n");
+printf("PlaceBetDialog::prepareBet: %s %s %s %s", event->id.c_str(), event->homeTeam.c_str(), betTeamToWin.c_str(), betOddsToWin.c_str());
+
+    ui->eventLabel->setText(QString::fromStdString(evtDes));
 }
 
 PlaceBetEvent* PlaceBetDialog::addEvent(
@@ -461,11 +515,17 @@ PlaceBetEvent* PlaceBetDialog::addEvent(
     const std::string& drawOdds
 )
 {
+printf("PlaceBetDialog::addEvent: about to print\n");
+printf("PlaceBetDialog::addEvent: %s %s\n", eventDetails.c_str(), homeOdds.c_str());
     PlaceBetEvent* event = new PlaceBetEvent(this, evt, eventDetails, homeOdds, awayOdds, drawOdds);
     event->setModel(model);
     ui->events->addWidget(event);
     // connect(event, SIGNAL(removeEvent(PlaceBetEvent*)), this, SLOT(removeEvent(PlaceBetEvent*)));
     // connect(event, SIGNAL(payAmountChanged()), this, SLOT(coinControlUpdateLabels()));
+
+    // passes event and string
+    connect(event, SIGNAL(currentEventChanged(CEvent*, const std::string&, const std::string&)),
+        this, SLOT(prepareBet(CEvent*, const std::string&, const std::string&)));
 
     updateTabsAndLabels();
 
@@ -507,11 +567,11 @@ QWidget* PlaceBetDialog::setupTabChain(QWidget* prev)
 //             prev = event->setupTabChain(prev);
 //         }
 //     }
-//     QWidget::setTabOrder(prev, ui->sendButton);
-//     QWidget::setTabOrder(ui->sendButton, ui->clearButton);
+//     QWidget::setTabOrder(prev, ui->placeBetButton);
+//     QWidget::setTabOrder(ui->placeBetButton, ui->clearButton);
 //     QWidget::setTabOrder(ui->clearButton, ui->addButton);
 //     return ui->addButton;
-    return ui->sendButton;
+    return ui->placeBetButton;
 }
 
 void PlaceBetDialog::setAddress(const QString& address)

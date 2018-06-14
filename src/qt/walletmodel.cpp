@@ -418,6 +418,51 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction& tran
     return SendCoinsReturn(OK);
 }
 
+WalletModel::StatusCode WalletModel::placeBet(CAmount amount, const std::string& eventId, const std::string& teamToWin)
+{
+printf("WalletModel::placeBet: about to print\n");
+printf("WalletModel::placeBet: %d %s %s\n", amount, eventId.c_str(), teamToWin.c_str());
+    // if (isAnonymizeOnlyUnlocked()) {
+    //     return AnonymizeOnlyUnlocked;
+    // }
+    {
+printf("WalletModel::placeBet: about to lock\n");
+        LOCK2(cs_main, wallet->cs_wallet);
+printf("WalletModel::placeBet: about to reserve\n");
+        CReserveKey* keyChange = new CReserveKey(wallet);
+
+printf("WalletModel::placeBet: reserved\n");
+    CWalletTx currentTransaction;
+    CBitcoinAddress address("");
+    CScript scriptPubKey = GetScriptForDestination(address.Get());
+    CAmount nFeeRequired;
+    std::string strError;
+printf("WalletModel::placeBet: creating transaction\n");
+    if (!wallet->CreateTransaction(scriptPubKey, amount, currentTransaction, *keyChange, nFeeRequired, strError, NULL, ALL_COINS, false, (CAmount)0, "2|" + eventId + "|" + teamToWin)) {
+printf("WalletModel::placeBet: couldn't create transaction\n");
+        if (amount + nFeeRequired > wallet->GetBalance())
+            // strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
+            // strError = strprintf("Error: This transaction requires a transaction fee because of its amount, complexity, or use of recently received funds!");
+            strError = "Error: This transaction requires a transaction fee because of its amount, complexity, or use of recently received funds!";
+        LogPrintf("SendMoney() : %s\n", strError);
+        return TransactionCommitFailed; // TODO Replace with appropriate error.
+        // throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+
+printf("WalletModel::placeBet: committing transaction\n");
+        if (!wallet->CommitTransaction(currentTransaction, *keyChange, "tx"))
+        {
+            return TransactionCommitFailed;
+        }
+    }
+
+printf("WalletModel::placeBet: check balance changed\n");
+    checkBalanceChanged(); // update balance immediately, otherwise there could be a short noticeable delay until pollBalanceChanged hits
+
+printf("WalletModel::placeBet: done.\n");
+    return OK;
+}
+
 OptionsModel* WalletModel::getOptionsModel()
 {
     return optionsModel;

@@ -47,7 +47,6 @@ public:
     void pasteEntry(const SendCoinsRecipient& rv);
     bool handlePaymentRequest(const SendCoinsRecipient& recipient);
     bool fSplitBlock;
-    void prepareBet(CEvent* event, const std::string& teamToWin);
 
 public slots:
     void clear();
@@ -64,8 +63,11 @@ private:
     ClientModel* clientModel;
     WalletModel* model;
     bool fNewRecipientAllowed;
-    void send(QList<SendCoinsRecipient> recipients, QString strFee, QStringList formatted);
+    void send(CAmount amount, const std::string& eventId, const std::string& teamToWin);
     bool fFeeMinimized;
+    CEvent* betEvent;
+    std::string betTeamToWin;
+    std::string betOddsToWin;
 
     // Process WalletModel::SendCoinsReturn and generate a pair consisting
     // of a message and message flags for use in emit message().
@@ -75,7 +77,7 @@ private:
     void updateFeeMinimizedLabel();
 
 private slots:
-    void on_sendButton_clicked();
+    void on_placeBetButton_clicked();
     void on_buttonChooseFee_clicked();
     void on_buttonMinimizeFee_clicked();
     void removeEvent(PlaceBetEvent* event);
@@ -101,6 +103,7 @@ private slots:
     void updateMinFeeLabel();
     void updateSmartFeeLabel();
     void updateGlobalFeeVariables();
+    void prepareBet(CEvent* event, const std::string& teamToWin, const std::string& oddsToWin);
 
 signals:
     // Fired when a message should be reported to the user

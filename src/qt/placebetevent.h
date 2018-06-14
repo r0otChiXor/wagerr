@@ -12,9 +12,14 @@
 class CEvent
 {
 public:
-    // TODO We would ideally make all member variables `private`.
+    // TODO We would ideally make all member variables `private` and access
+    // them using getters and setters, but we make them public for now for speed
+    // of implementation.
+    const std::string& id;
+    std::string starting;
     std::string homeTeam;
     std::string homeOdds;
+    std::string awayTeam;
     std::string awayOdds;
     std::string drawOdds;
 
@@ -74,6 +79,7 @@ public slots:
     void clear();
 
 signals:
+    void currentEventChanged(CEvent* event, const std::string& teamToWin, const std::string& oddsToWin);
     void removeEntry(PlaceBetEvent* entry);
     void payAmountChanged();
 
