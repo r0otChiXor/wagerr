@@ -188,6 +188,59 @@ std::vector<std::vector<std::string>> getEventResults() {
     return results;
 }
 
+std::vector<std::vector<std::string>> checkResults(results){
+    //get list of valid results - make sure they havent been paid out already
+    if (Params().NetworkID() == CBaseChainParams::MAIN) {
+        resultsBocksIndex = chainActive[nCurrentHeight - 1440]; 
+    } else {
+        resultsBocksIndex = chainActive[nCurrentHeight - 1440];  
+    }
+
+    //check if there is a results already posted for an event in the last x blocks
+    while (resultsBocksIndex) {
+        CBlock block;
+        ReadBlockFromDisk(block, resultsBocksIndex);
+
+        BOOST_FOREACH(CTransaction& tx, block.vtx) {
+
+            for (unsigned int i = 0; i < tx.vout.size(); i++) {
+                const CTxOut& txout = tx.vout[i];
+                std::string s = txout.scriptPubKey.ToString();
+                if (s.length() > 0) {
+
+                    if (CBitcoinAddress(tx.vout[0].ToString()).ToString() == "TVASr4bm6Rz19udhUWmSGtrrDExCjQdATp") {
+
+                        if (0 == strncmp(s.c_str(), "OP_RETURN", 9)) {
+
+                            vector<unsigned char> v = ParseHex(s.substr(9, string::npos));
+                            std::string betDescr(v.begin(), v.end());
+                            std::vector<std::string> strs;
+
+                            boost::split(strs, betDescr, boost::is_any_of("|"));
+
+                            //check if the result is the correct result type (3) and size 
+                            if (strs.size() != 4 || strs[0] != "3") {
+                                continue;
+                            }
+
+                            //loop through and check if the eventid matches a result event id
+                            for (unsigned int i = 0; i < results.size(); i++) {
+                                if (results[i][0] == strs[2]) {
+                                    //remove it from the array
+                                    results.erase(results.begin() + i);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        resultsBocksIndex = chainActive.Next(resultsBocksIndex);
+    }
+
+    return results;
+}
+
 /**
  * Creates the bet vector payout transaction.
  *
@@ -198,6 +251,10 @@ std::vector<CTxOut> GetBetPayouts() {
     std::vector<CTxOut> vexpectedPayouts;
     // Get all the results posted on chain in the last 24 hours.
     std::vector<std::vector<std::string>> results = getEventResults( );
+
+    //check if the results have already been posted in the last 24 hours
+    //remove from vector if they have been
+    results = checkResults(results);
 
     double nFees;
     static int nSubmittedHeight = 0;
