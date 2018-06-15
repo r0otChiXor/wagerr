@@ -205,6 +205,7 @@ void WalletView::setWalletModel(WalletModel* walletModel)
     privacyPage->setModel(walletModel);
     receiveCoinsPage->setModel(walletModel);
     sendCoinsPage->setModel(walletModel);
+    placeBetPage->setModel(walletModel);
 
     if (walletModel) {
         // Receive and pass through messages from wallet model
