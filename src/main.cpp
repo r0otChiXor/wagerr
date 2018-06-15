@@ -2174,7 +2174,7 @@ int64_t GetBlockPayouts( std::vector<CTxOut>& vexpectedPayouts){
 
     CAmount nFees = nPayout/94*3*COIN; // Betting payouts are 94% of betting amount. 3% of the betting amount is MN fee.
 
-    printf( "Main.cpp Get Block Payouts! %i \n", nFees );
+    printf( "Main.cpp Get Block Payouts! %li \n", nFees );
 
     return nPayout + nFees;
 }
@@ -3257,14 +3257,24 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (block.IsProofOfWork())
         nExpectedMint += nFees;
 
-    if( !fVerifyingBlocks && pindex->nHeight % 5 == 0 ){
-        std::vector<CTxOut> voutPayouts = GetBetPayouts();
-        //printf("Main.cpp VectorPayouts count: %i \n", vexpectedPayouts.size() ) ;
+
+    int triggerBetPayouts = 0;
+    if (Params().NetworkID() == CBaseChainParams::MAIN) {
+        triggerBetPayouts = 1200;
+    }
+    else {
+        triggerBetPayouts = 10;
+    }
+
+    // Trigger the bet payout superbloc.
+    if( !fVerifyingBlocks && pindex->nHeight % triggerBetPayouts == 0 ){
+
+       //std::vector<CTxOut> vexpectedPayouts = GetBetPayouts();
         //nExpectedMint += GetBlockPayouts(vexpectedPayouts);
+
+        //printf("Main.cpp Expectant Mintt: %li \n", nExpectedMint ) ;
         //vexpectedPayouts.clear();
     }
-    
-
 
     if (!IsBlockValueValid(block, nExpectedMint, pindex->nMint)) {
         return state.DoS(100,
