@@ -3260,20 +3260,22 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     int triggerBetPayouts = 0;
     if (Params().NetworkID() == CBaseChainParams::MAIN) {
-        triggerBetPayouts = 1200;
+        // trigger once a day mainnet.
+        triggerBetPayouts = 1440;
     }
     else {
+        // Trigger every ten blocks testnet.
         triggerBetPayouts = 10;
     }
 
-    // Trigger the bet payout superbloc.
+    // Trigger the bet payout.
     if( !fVerifyingBlocks && pindex->nHeight % triggerBetPayouts == 0 ){
 
-       //std::vector<CTxOut> vexpectedPayouts = GetBetPayouts();
-        //nExpectedMint += GetBlockPayouts(vexpectedPayouts);
+        std::vector<CTxOut> vexpectedPayouts = GetBetPayouts();
+        nExpectedMint += GetBlockPayouts(vexpectedPayouts);
 
-        //printf("Main.cpp Expectant Mintt: %li \n", nExpectedMint ) ;
-        //vexpectedPayouts.clear();
+        printf("Total Amount: %li \n", nExpectedMint );
+        vexpectedPayouts.clear();
     }
 
     if (!IsBlockValueValid(block, nExpectedMint, pindex->nMint)) {

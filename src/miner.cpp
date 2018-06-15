@@ -129,7 +129,7 @@ std::vector<std::vector<std::string>> getEventResults() {
             resultsBocksIndex = chainActive[nCurrentHeight - 1440];
         }
         else {
-            resultsBocksIndex = chainActive[nCurrentHeight - 1000];
+            resultsBocksIndex = chainActive[nCurrentHeight - 900];
         }
 
         // Traverse the blockchain to find results.
@@ -271,7 +271,7 @@ std::vector<CTxOut> GetBetPayouts() {
                 BlocksIndex = chainActive[nCurrentHeight - 129600];
             }
             else {
-                BlocksIndex = chainActive[nCurrentHeight - 1000];
+                BlocksIndex = chainActive[nCurrentHeight - 900];
             }
 
             double payout = 0.0;
@@ -282,6 +282,7 @@ std::vector<CTxOut> GetBetPayouts() {
             std::string latestHomeTeam;
             std::string latestAwayTeam;
 
+            // Traverse the blockchain to find events and bets.
             while (BlocksIndex) {
 
                 CBlock block;
@@ -363,23 +364,22 @@ std::vector<CTxOut> GetBetPayouts() {
 
                                     // Calculate winnings.
                                     if( latestHomeTeam == result ) {
-                                        payout = (betAmount / COIN) * latestHomeOdds;
+                                        payout = betAmount * latestHomeOdds;
                                     }
                                     else if( latestAwayTeam == result ){
                                         payout = (betAmount / COIN) * latestAwayOdds;
                                     }
                                     else{
                                         payout = (betAmount / COIN) * latestDrawOdds;
-
                                     }
 
                                     CTxDestination address;
                                     ExtractDestination(tx.vout[0].scriptPubKey, address);
 
-                                    printf("WINNING PAYOUT :)  %f \n", payout);
+                                    printf("WINNING PAYOUT :)  %f \n", payout * COIN);
                                     printf("ADDRESS: %s \n", CBitcoinAddress(address).ToString().c_str());
 
-                                    vexpectedPayouts.emplace_back(payout, GetScriptForDestination(CBitcoinAddress( address ).Get()));
+                                    vexpectedPayouts.emplace_back( payout * COIN, GetScriptForDestination(CBitcoinAddress( address ).Get()));
                                 }
 
                                 for( unsigned int l = 0; l < vexpectedPayouts.size(); l++ ){
@@ -719,7 +719,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
             voutPayouts = GetBetPayouts();
             nFees = GetBlockPayouts( voutPayouts );
 
-            printf("Vector Payouts count: %li %i \n", voutPayouts.size(), nFees ) ;
+            printf("Vector Payouts count: %li %li \n", voutPayouts.size(), nFees ) ;
             
             // Fill coin stake transaction.
             pwallet->FillCoinStake(txCoinStake, nFees, voutPayouts); // Kokary: add betting fee
