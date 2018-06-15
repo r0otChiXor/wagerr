@@ -575,14 +575,39 @@ void SendMoney(const CTxDestination& address, CAmount nValue, CWalletTx& wtxNew,
 
 UniValue placebet(const UniValue& params, bool fHelp)
 {
+    // TODO - remove hardcoded teams and events.
+    std::vector<std::string> rd1EventIds = {"#000","#001","#002","#004","#005","#006","#007","#008","#009","#010","#011","#012","#013","#014","#015"};
+
+    std::vector<std::string> rd1Teams = {"ARG","AUS","BRA","CRC","DEN","EGY","ESP","FRA","GER","IRN","ISL","KSA", "MAR","MEX","PER","POR","RUS","SRB", "URU"};
+
+
+    bool isValidEvent = false;
+    bool isValidTeam  = false;
+
+    if(std::find(rd1EventIds.begin(), rd1EventIds.end(), params[0].get_str()) != rd1EventIds.end()){
+        isValidEvent = true;
+    }
+
+    if(std::find(rd1Teams.begin(), rd1Teams.end(), params[1].get_str()) != rd1Teams.end()){
+        isValidTeam = true;
+    }
+
+    if( ! isValidEvent ){
+        throw runtime_error("Not a valid event ID, please ensure you entered the Event ID correctly.");
+    }
+
+    if( ! isValidTeam ){
+        throw runtime_error("Not a valid team to bet on, please ensure you entered the team abbreviation correctly.");
+    }
+
     if (fHelp || params.size() < 3 || params.size() > 5)
         throw runtime_error(
             "placebet \"event-id\" \"team\" amount ( \"comment\" \"comment-to\" )\n"
             "\nPlace an amount as a bet on an event. The amount is a real and is rounded to the nearest 0.00000001\n" +
             HelpRequiringPassphrase() +
             "\nArguments:\n"
-            "1. \"event-id\"    (string, required) The event to bet on.\n"
-            "2. \"team\"        (string, required) The team to win.\n"
+            "1. \"event-id\"    (string, required) The event to bet on (Must be 4 characters in length e.g. \"#000\").\n"
+            "2. \"team\"        (string, required) The team to win.(Must be 3 character team abbreviation e.g \"RUS\")\n"
             "3. \"amount\"      (numeric, required) The amount in wgr to send. eg 0.1\n"
             "3. \"comment\"     (string, optional) A comment used to store what the transaction is for. \n"
             "                             This is not part of the transaction, just kept in your wallet.\n"
@@ -592,8 +617,8 @@ UniValue placebet(const UniValue& params, bool fHelp)
             "\nResult:\n"
             "\"transactionid\"  (string) The transaction id.\n"
             "\nExamples:\n" +
-            HelpExampleCli("placebet", "\"1h34\" \"RUS\" 0.1 \"donation\" \"seans outpost\"") +
-            HelpExampleRpc("placebet", "\"1h34\", \"RUS\", 0.1, \"donation\", \"seans outpost\""));
+            HelpExampleCli("placebet", "\"#000\" \"RUS\" 0.1 \"donation\" \"seans outpost\"") +
+            HelpExampleRpc("placebet", "\"#000\", \"RUS\", 0.1, \"donation\", \"seans outpost\""));
 
     // Amount
     CAmount nAmount = AmountFromValue(params[2]);

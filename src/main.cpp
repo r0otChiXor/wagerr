@@ -3274,7 +3274,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         std::vector<CTxOut> vexpectedPayouts = GetBetPayouts();
         nExpectedMint += GetBlockPayouts(vexpectedPayouts);
 
-        printf("Total Amount: %li \n", nExpectedMint );
+        printf("Total Amount to Payout: %li \n", nExpectedMint );
         vexpectedPayouts.clear();
     }
 
