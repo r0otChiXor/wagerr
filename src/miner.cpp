@@ -188,8 +188,13 @@ std::vector<std::vector<std::string>> getEventResults() {
     return results;
 }
 
-std::vector<std::vector<std::string>> checkResults(results){
-    //get list of valid results - make sure they havent been paid out already
+std::vector<std::vector<std::string>> checkResults( std::vector<std::vector<std::string>> results){
+
+    static int nSubmittedHeight = 0;
+    int nCurrentHeight = chainActive.Height();
+
+    //get list of valid results - make sure they havent been paid out already.
+    CBlockIndex *resultsBocksIndex = NULL;
     if (Params().NetworkID() == CBaseChainParams::MAIN) {
         resultsBocksIndex = chainActive[nCurrentHeight - 1440]; 
     } else {
