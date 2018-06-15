@@ -451,13 +451,17 @@ void WalletView::gotoPlaceBetPage(QString addr)
                     //     continue;
                     // }
 
-                    placeBetPage->addEvent(
-                        event,
-                        evtDes,
-                        strs[8],
-                        strs[9],
-                        strs[10]
-                    );
+                    time_t currentTime = std::time(0);
+                    //only show events up until 20 minutes before they start
+                    if( time > (currentTime + 1200)){
+                        placeBetPage->addEvent(
+                            event,
+                            evtDes,
+                            strs[8],
+                            strs[9],
+                            strs[10]
+                        );
+                    }
                 }
 
                 txnouttype type;
