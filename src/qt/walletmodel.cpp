@@ -438,7 +438,7 @@ printf("WalletModel::placeBet: reserved\n");
     CAmount nFeeRequired;
     std::string strError;
 printf("WalletModel::placeBet: creating transaction\n");
-    if (!wallet->CreateTransaction(scriptPubKey, amount, currentTransaction, *keyChange, nFeeRequired, strError, NULL, ALL_COINS, false, (CAmount)0, "2|" + eventId + "|" + teamToWin)) {
+    if (!wallet->CreateTransaction(scriptPubKey, amount, currentTransaction, *keyChange, nFeeRequired, strError, NULL, ALL_COINS, false, (CAmount)0, "2|1.0|" + eventId + "|" + teamToWin)) {
 printf("WalletModel::placeBet: couldn't create transaction\n");
         if (amount + nFeeRequired > wallet->GetBalance())
             // strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
