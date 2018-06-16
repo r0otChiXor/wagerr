@@ -341,7 +341,7 @@ printf("on_placeBetButton_clicked: !betEvent\n");
     std::string eventId = betEvent->id;
     std::string team = betTeamToWin;
 printf("on_placeBetButton_clicked: about to print\n");
-printf("on_placeBetButton_clicked: betEvent: %d %s %s\n", amount, eventId.c_str(), team.c_str());
+printf("on_placeBetButton_clicked: betEvent: %ld %s %s\n", amount, eventId.c_str(), team.c_str());
     send(amount, eventId, team);
 }
 
@@ -385,7 +385,7 @@ printf("PlaceBetDialog::send: !betEvent\n");
     }
 
 printf("PlaceBetDialog::send: about to print\n");
-printf("PlaceBetDialog::send: %d %s %s\n", amount, eventId, teamToWin);
+printf("PlaceBetDialog::send: %ld %s %s\n", amount, eventId.c_str(), teamToWin.c_str());
     // now send the prepared transaction
 // get amount from text box
     WalletModel::StatusCode sendStatus = model->placeBet(amount, eventId, teamToWin);

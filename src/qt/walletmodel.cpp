@@ -421,7 +421,7 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction& tran
 WalletModel::StatusCode WalletModel::placeBet(CAmount amount, const std::string& eventId, const std::string& teamToWin)
 {
 printf("WalletModel::placeBet: about to print\n");
-printf("WalletModel::placeBet: %d %s %s\n", amount, eventId.c_str(), teamToWin.c_str());
+printf("WalletModel::placeBet: %ld %s %s\n", amount, eventId.c_str(), teamToWin.c_str());
     // if (isAnonymizeOnlyUnlocked()) {
     //     return AnonymizeOnlyUnlocked;
     // }
