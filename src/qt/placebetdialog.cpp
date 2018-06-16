@@ -39,8 +39,8 @@ PlaceBetDialog::PlaceBetDialog(QWidget* parent) : QDialog(parent),
     ui->setupUi(this);
 
 #ifdef Q_OS_MAC // Icons on push buttons are very uncommon on Mac
-    ui->addButton->setIcon(QIcon());
-    ui->clearButton->setIcon(QIcon());
+//    ui->addButton->setIcon(QIcon());
+//    ui->clearButton->setIcon(QIcon());
     ui->placeBetButton->setIcon(QIcon());
 #endif
 
