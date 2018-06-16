@@ -205,6 +205,7 @@ RES_ICONS = \
   qt/res/icons/address-book.png \
   qt/res/icons/automint_active.png \
   qt/res/icons/automint_inactive.png \
+  qt/res/icons/betting.png \
   qt/res/icons/wagerr.ico \
   qt/res/icons/wagerr.png \
   qt/res/icons/wagerr_testnet.ico \
