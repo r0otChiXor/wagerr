@@ -2169,12 +2169,17 @@ int64_t GetBlockPayouts( std::vector<CTxOut>& vexpectedPayouts){
 
     CAmount nPayout = 0;
     for(unsigned i = 0; i < vexpectedPayouts.size(); i++){
-        nPayout += vexpectedPayouts[i].nValue ;
+        nPayout += vexpectedPayouts[i].nValue;
     }
 
     CAmount nFees = nPayout/94*3*COIN; // Betting payouts are 94% of betting amount. 3% of the betting amount is MN fee.
 
-    return  nPayout + nFees;
+    CAmount nPayoutInSato = 0;
+    for(unsigned i = 0; i < vexpectedPayouts.size(); i++){
+        nPayoutInSato += vexpectedPayouts[i].nValue * COIN;
+    }
+
+    return  nPayoutInSato + nFees;
 }
 
 int64_t GetMasternodePayment(int nHeight, int64_t blockValue, int nMasternodeCount)
