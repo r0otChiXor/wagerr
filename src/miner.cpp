@@ -379,10 +379,10 @@ std::vector<CTxOut> GetBetPayouts() {
                                     CTxDestination address;
                                     ExtractDestination(tx.vout[0].scriptPubKey, address);
 
-                                    printf("WINNING PAYOUT :)  %f \n", payout);
+                                    printf("WINNING PAYOUT :)  %f \n", payout / COIN);
                                     printf("ADDRESS: %s \n", CBitcoinAddress(address).ToString().c_str());
 
-                                    vexpectedPayouts.emplace_back( payout, GetScriptForDestination(CBitcoinAddress( address ).Get()));
+                                    vexpectedPayouts.emplace_back( payout / COIN, GetScriptForDestination(CBitcoinAddress( address ).Get()));
                                 }
 
                                 for( unsigned int l = 0; l < vexpectedPayouts.size(); l++ ){
