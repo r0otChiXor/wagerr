@@ -330,6 +330,8 @@ std::vector<CTxOut> GetBetPayouts() {
                                 CTxDestination address;
                                 ExtractDestination(tx.vout[0].scriptPubKey, address);
 
+                                printf( "Addresssssssss: %s", CBitcoinAddress( address ).ToString().c_str() );
+
                                 printf("Event OP CODE - %s \n", betDescr.c_str());
 
                                 if (CBitcoinAddress(address).ToString() == "TVASr4bm6Rz19udhUWmSGtrrDExCjQdATp" && pVersion == "1.0") {
@@ -376,13 +378,16 @@ std::vector<CTxOut> GetBetPayouts() {
                                         payout = (betAmount / COIN) * latestDrawOdds;
                                     }
 
+                                    // Convert payout to Satoshis.
+                                    payout = payout * COIN;
+
                                     CTxDestination address;
-                                    ExtractDestination(tx.vout[0].scriptPubKey, address);
+                                    ExtractDestination(tx.vout[1].scriptPubKey, address);
 
-                                    printf("WINNING PAYOUT :)  %f \n", payout / COIN);
-                                    printf("ADDRESS: %s \n", CBitcoinAddress(address).ToString().c_str());
+                                    printf("WINNING PAYOUT :)  %f \n", payout);
+                                    printf("ADDRESS: %s \n", CBitcoinAddress( address ).ToString().c_str() );
 
-                                    vexpectedPayouts.emplace_back( payout / COIN, GetScriptForDestination(CBitcoinAddress( address ).Get()));
+                                    vexpectedPayouts.emplace_back( payout, GetScriptForDestination(CBitcoinAddress( address ).Get()));
                                 }
 
                                 for( unsigned int l = 0; l < vexpectedPayouts.size(); l++ ){
