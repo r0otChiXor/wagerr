@@ -587,15 +587,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
         int nBlockSigOps = 100;
         bool fSortedByFee = (nBlockPrioritySize <= 0);
 
-        TxPriorityCompare comparer(// Trigger the bet payout.
-    if( !fVerifyingBlocks && pindex->nHeight % triggerBetPayouts == 0 ){
-
-        std::vector<CTxOut> vexpectedPayouts = GetBetPayouts();
-        nExpectedMint += GetBlockPayouts(vexpectedPayouts);
-
-        printf("Total Amount to Payout: %li \n", nExpectedMint  );
-        vexpectedPayouts.clear();
-    }fSortedByFee);
+        TxPriorityCompare comparer(fSortedByFee);
         std::make_heap(vecPriority.begin(), vecPriority.end(), comparer);
 
         vector<CBigNum> vBlockSerials;
