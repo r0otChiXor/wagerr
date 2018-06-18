@@ -277,7 +277,7 @@ std::vector<CTxOut> GetBetPayouts() {
                 BlocksIndex = chainActive[nCurrentHeight - 720];
             }
 
-            double payout = 0.0;
+            CAmount payout = 0 * COIN;
             double latestHomeOdds = 0.0;
             double latestAwayOdds = 0.0;
             double latestDrawOdds = 0.0;
@@ -298,7 +298,7 @@ std::vector<CTxOut> GetBetPayouts() {
 
                         const CTxOut &txout = tx.vout[i];
                         std::string s       = txout.scriptPubKey.ToString();
-                        double betAmount    = txout.nValue;
+                        CAmount betAmount    = txout.nValue;
 
                         if(s.length() > 0 && 0 == strncmp(s.c_str(), "OP_RETURN", 9)) {
 
@@ -369,22 +369,19 @@ std::vector<CTxOut> GetBetPayouts() {
 
                                     // Calculate winnings.
                                     if( latestHomeTeam == result ) {
-                                        payout = (betAmount / COIN) * latestHomeOdds;
+                                        payout = betAmount * latestHomeOdds;
                                     }
                                     else if( latestAwayTeam == result ){
-                                        payout = (betAmount / COIN) * latestAwayOdds;
+                                        payout = betAmount * latestAwayOdds;
                                     }
                                     else{
-                                        payout = (betAmount / COIN) * latestDrawOdds;
+                                        payout = betAmount * latestDrawOdds;
                                     }
-
-                                    // Convert payout to Satoshis.
-                                    payout = payout * COIN;
 
                                     CTxDestination address;
                                     ExtractDestination(tx.vout[1].scriptPubKey, address);
 
-                                    printf("WINNING PAYOUT :)  %f \n", payout);
+                                    printf("WINNING PAYOUT :)  %ld \n", payout);
                                     printf("ADDRESS: %s \n", CBitcoinAddress( address ).ToString().c_str() );
 
                                     vexpectedPayouts.emplace_back( payout, GetScriptForDestination(CBitcoinAddress( address ).Get()));
@@ -725,7 +722,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
             std::vector<CTxOut> voutPayouts;
 
             voutPayouts = GetBetPayouts();
-            nFees = GetBlockPayouts( voutPayouts );
+            GetBlockPayouts( voutPayouts, nFees );
 
             printf("Vector Payouts count + Fees: %li %li \n", voutPayouts.size(), nFees ) ;
             
