@@ -64,7 +64,8 @@ public:
 uint64_t nLastBlockTx = 0;
 uint64_t nLastBlockSize = 0;
 int64_t nLastCoinStakeSearchInterval = 0;
-int nBetingStartBlock = 20000;
+
+int nBetingStartBlock = 23000;
 
 // We want to sort transactions by priority and fee rate, so:
 typedef boost::tuple<double, CFeeRate, const CTransaction*> TxPriority;
@@ -118,7 +119,7 @@ std::vector<std::vector<std::string>> getEventResults() {
     int nSubmittedHeight = 0;
 
     // Get the start block to search for results from the blockchain.
-    printf("BET PAYOUT BLOCK block height! %i \n", nCurrentHeight);
+    printf("BET PAYOUT BLOCK: %i \n", nCurrentHeight);
 
     // Discard all the result transactions before a given block.
     if (nSubmittedHeight <= (nCurrentHeight - nBetingStartBlock)) {
@@ -129,7 +130,7 @@ std::vector<std::vector<std::string>> getEventResults() {
             resultsBocksIndex = chainActive[nCurrentHeight - 1440];
         }
         else {
-            resultsBocksIndex = chainActive[nCurrentHeight - 900];
+            resultsBocksIndex = chainActive[nCurrentHeight - 720];
         }
 
         // Traverse the blockchain to find results.
@@ -190,18 +191,17 @@ std::vector<std::vector<std::string>> getEventResults() {
 
 std::vector<std::vector<std::string>> checkResults( std::vector<std::vector<std::string>> results){
 
-    static int nSubmittedHeight = 0;
     int nCurrentHeight = chainActive.Height();
 
-    //get list of valid results - make sure they havent been paid out already.
+    // Get list of valid results - make sure theyhaven't been paid out already.
     CBlockIndex *resultsBocksIndex = NULL;
     if (Params().NetworkID() == CBaseChainParams::MAIN) {
         resultsBocksIndex = chainActive[nCurrentHeight - 1440]; 
     } else {
-        resultsBocksIndex = chainActive[nCurrentHeight - 1440];  
+        resultsBocksIndex = chainActive[nCurrentHeight -720];
     }
 
-    //check if there is a results already posted for an event in the last x blocks
+    // Check if there is a result already posted for an event in the last x blocks
     while (resultsBocksIndex) {
         CBlock block;
         ReadBlockFromDisk(block, resultsBocksIndex);
@@ -240,6 +240,7 @@ std::vector<std::vector<std::string>> checkResults( std::vector<std::vector<std:
                 }
             }
         }
+
         resultsBocksIndex = chainActive.Next(resultsBocksIndex);
     }
 
@@ -247,7 +248,7 @@ std::vector<std::vector<std::string>> checkResults( std::vector<std::vector<std:
 }
 
 /**
- * Creates the bet vector payout transaction.
+ * Creates the winning bets payout vector.
  *
  * @return payout vector.
  */
@@ -256,19 +257,16 @@ std::vector<CTxOut> GetBetPayouts() {
     std::vector<CTxOut> vexpectedPayouts;
     // Get all the results posted on chain in the last 24 hours.
     std::vector<std::vector<std::string>> results = getEventResults( );
-
-    //check if the results have already been posted in the last 24 hours
-    //remove from vector if they have been
+    // Check if the results have already been posted in the last 24 hours (i.e remove results already paid out).
     results = checkResults(results);
 
-    double nFees;
     static int nSubmittedHeight = 0;
     int nCurrentHeight = chainActive.Height();
 
     // Discard all the Bet and Event transactions before a given block.
     if(nSubmittedHeight < (nCurrentHeight - nBetingStartBlock)) {
 
-        // Traverse the blockchain for all bets on a given result.
+        // Traverse the blockchain for all bets on a result.
         for(unsigned int currResult = 0; currResult < results.size(); currResult++) {
 
             CBlockIndex *BlocksIndex = NULL;
@@ -276,7 +274,7 @@ std::vector<CTxOut> GetBetPayouts() {
                 BlocksIndex = chainActive[nCurrentHeight - 129600];
             }
             else {
-                BlocksIndex = chainActive[nCurrentHeight - 900];
+                BlocksIndex = chainActive[nCurrentHeight - 720];
             }
 
             double payout = 0.0;
@@ -369,7 +367,7 @@ std::vector<CTxOut> GetBetPayouts() {
 
                                     // Calculate winnings.
                                     if( latestHomeTeam == result ) {
-                                        payout = betAmount * latestHomeOdds;
+                                        payout = (betAmount / COIN) * latestHomeOdds;
                                     }
                                     else if( latestAwayTeam == result ){
                                         payout = (betAmount / COIN) * latestAwayOdds;
@@ -381,10 +379,10 @@ std::vector<CTxOut> GetBetPayouts() {
                                     CTxDestination address;
                                     ExtractDestination(tx.vout[0].scriptPubKey, address);
 
-                                    printf("WINNING PAYOUT :)  %f \n", payout * COIN);
+                                    printf("WINNING PAYOUT :)  %f \n", payout);
                                     printf("ADDRESS: %s \n", CBitcoinAddress(address).ToString().c_str());
 
-                                    vexpectedPayouts.emplace_back( payout * COIN, GetScriptForDestination(CBitcoinAddress( address ).Get()));
+                                    vexpectedPayouts.emplace_back( payout, GetScriptForDestination(CBitcoinAddress( address ).Get()));
                                 }
 
                                 for( unsigned int l = 0; l < vexpectedPayouts.size(); l++ ){
@@ -589,7 +587,15 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
         int nBlockSigOps = 100;
         bool fSortedByFee = (nBlockPrioritySize <= 0);
 
-        TxPriorityCompare comparer(fSortedByFee);
+        TxPriorityCompare comparer(// Trigger the bet payout.
+    if( !fVerifyingBlocks && pindex->nHeight % triggerBetPayouts == 0 ){
+
+        std::vector<CTxOut> vexpectedPayouts = GetBetPayouts();
+        nExpectedMint += GetBlockPayouts(vexpectedPayouts);
+
+        printf("Total Amount to Payout: %li \n", nExpectedMint  );
+        vexpectedPayouts.clear();
+    }fSortedByFee);
         std::make_heap(vecPriority.begin(), vecPriority.end(), comparer);
 
         vector<CBigNum> vBlockSerials;
@@ -724,7 +730,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
             voutPayouts = GetBetPayouts();
             nFees = GetBlockPayouts( voutPayouts );
 
-            printf("Vector Payouts count: %li %li \n", voutPayouts.size(), nFees ) ;
+            printf("Vector Payouts count + Fees: %li %li \n", voutPayouts.size(), nFees ) ;
             
             // Fill coin stake transaction.
             pwallet->FillCoinStake(txCoinStake, nFees, voutPayouts); // Kokary: add betting fee

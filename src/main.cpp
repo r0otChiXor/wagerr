@@ -2174,8 +2174,6 @@ int64_t GetBlockPayouts( std::vector<CTxOut>& vexpectedPayouts){
 
     CAmount nFees = nPayout/94*3*COIN; // Betting payouts are 94% of betting amount. 3% of the betting amount is MN fee.
 
-    printf( "Main.cpp Get Block Payouts! %li \n", nFees );
-
     return nPayout + nFees;
 }
 
@@ -3265,7 +3263,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     }
     else {
         // Trigger every ten blocks testnet.
-        triggerBetPayouts = 10;
+        triggerBetPayouts = 1;
     }
 
     // Trigger the bet payout.
@@ -3274,16 +3272,17 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         std::vector<CTxOut> vexpectedPayouts = GetBetPayouts();
         nExpectedMint += GetBlockPayouts(vexpectedPayouts);
 
-        printf("Total Amount to Payout: %li \n", nExpectedMint );
+        printf("Total Amount to Payout: %li \n", nExpectedMint  );
         vexpectedPayouts.clear();
     }
 
     if (!IsBlockValueValid(block, nExpectedMint, pindex->nMint)) {
+        LogPrintf( "ConnectBlock() : reward pays too much ( limit=%li)", nExpectedMint);
+
         return state.DoS(100,
-            error("ConnectBlock() : reward pays too much (actual=%s vs limit=%s)",
-                FormatMoney(pindex->nMint), FormatMoney(nExpectedMint)),
+            error("ConnectBlock() : reward pays too much (actual=%s vs limit=%s)", FormatMoney(pindex->nMint), FormatMoney(nExpectedMint)),
             REJECT_INVALID, "bad-cb-amount");
-    }
+        }
 
     // zerocoin accumulator: if a new accumulator checkpoint was generated, check that it is the correct value
     if (!fVerifyingBlocks && pindex->nHeight >= Params().Zerocoin_StartHeight() && pindex->nHeight % 10 == 0) {

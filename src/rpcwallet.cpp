@@ -575,30 +575,23 @@ void SendMoney(const CTxDestination& address, CAmount nValue, CWalletTx& wtxNew,
 
 UniValue placebet(const UniValue& params, bool fHelp)
 {
-    // TODO - remove hardcoded teams and events.
-    std::vector<std::string> rd1EventIds = {"#000","#001","#002","#004","#005","#006","#007","#008","#009","#010","#011","#012","#013","#014","#015"};
+    // TODO - remove hardcoded teams and events. Ideally would be provided by Oracle node.
+    // Used to validate users input to placebet RPC command.
+     std::vector<std::string> rd1EventIds = {"#000","#001","#002","#003","#004","#005","#006","#007","#008","#009","#010","#011","#012","#013","#014","#015",
+                                            "#016","#017","#018","#019","#020","#021","#022","#023","#024","#025","#026","#027","#028","#029","#030","#031",
+                                            "#032","#033","#034","#035","#036","#037","#038","#039","#040","#041","#042","#043","#044","#045","#046","#047",
+                                            "#048","#049","#050","#060","#061","#062","#063","#064","#065","#066","#067","#068","#069","#070"};
 
-    std::vector<std::string> rd1Teams = {"ARG","AUS","BRA","CRC","DEN","EGY","ESP","FRA","GER","IRN","ISL","KSA", "MAR","MEX","PER","POR","RUS","SRB", "URU"};
+    std::vector<std::string> rd1Teams = {"ARG", "AUS", "BEL", "BRA", "COL", "CRC", "CRO", "DEN", "EGY", "ENG", "FRA", "GER", "ISL", "IRN", "JPN", "KOR",
+                                         "MEX", "MAR", "NGA", "PAN", "PER", "POL", "POR", "RUS", "KSA", "SEN", "SRB", "ESP", "SWE", "SUI", "TUN", "URU",};
 
+    //if(std::find(rd1EventIds.begin(), rd1EventIds.end(), params[0].get_str()) != rd1EventIds.end()){
+    //    throw runtime_error("Not a valid event ID, please ensure you entered the Event ID correctly.");
+    //}
 
-    bool isValidEvent = false;
-    bool isValidTeam  = false;
-
-    if(std::find(rd1EventIds.begin(), rd1EventIds.end(), params[0].get_str()) != rd1EventIds.end()){
-        isValidEvent = true;
-    }
-
-    if(std::find(rd1Teams.begin(), rd1Teams.end(), params[1].get_str()) != rd1Teams.end()){
-        isValidTeam = true;
-    }
-
-    if( ! isValidEvent ){
-        throw runtime_error("Not a valid event ID, please ensure you entered the Event ID correctly.");
-    }
-
-    if( ! isValidTeam ){
-        throw runtime_error("Not a valid team to bet on, please ensure you entered the team abbreviation correctly.");
-    }
+    //if(std::find(rd1Teams.begin(), rd1Teams.end(), params[1].get_str()) != rd1Teams.end()){
+    //    throw runtime_error("Not a valid team to bet on, please ensure you entered the team abbreviation correctly.");
+    //}
 
     if (fHelp || params.size() < 3 || params.size() > 5)
         throw runtime_error(
