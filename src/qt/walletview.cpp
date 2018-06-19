@@ -309,6 +309,13 @@ void WalletView::gotoPlaceBetPage(QString addr)
 
     std::map<std::string, std::string> roundNames;
     roundNames.insert(make_pair("R1", "Round 1"));
+    roundNames.insert(make_pair("RD2", "Round 2"));
+    roundNames.insert(make_pair("RD3", "Round 3"));
+    roundNames.insert(make_pair("F16", "Final 16"));
+    roundNames.insert(make_pair("QFL", "Quarter Final"));
+    roundNames.insert(make_pair("SFL", "Semi Final"));
+    roundNames.insert(make_pair("FIN", "Final"));
+
 
     std::map<std::string, std::string> countryNames;
     countryNames.insert(make_pair("ARG", "Argentina"));
@@ -330,6 +337,19 @@ void WalletView::gotoPlaceBetPage(QString addr)
     countryNames.insert(make_pair("RUS", "Russia"));
     countryNames.insert(make_pair("SRB", "Serbia"));
     countryNames.insert(make_pair("URU", "Uruguay"));
+    countryNames.insert(make_pair("BEL", "Belgium"));
+    countryNames.insert(make_pair("COL", "Columbia"));
+    countryNames.insert(make_pair("CRO", "Croatia"));
+    countryNames.insert(make_pair("ENG", "England"));
+    countryNames.insert(make_pair("JPN", "Japan"));
+    countryNames.insert(make_pair("KOR", "Korea Republic"));
+    countryNames.insert(make_pair("NGA", "Nigeria"));
+    countryNames.insert(make_pair("PAN", "Panama"));
+    countryNames.insert(make_pair("POL", "Poland"));
+    countryNames.insert(make_pair("SEN", "Senegal"));
+    countryNames.insert(make_pair("SWE", "Sweden"));
+    countryNames.insert(make_pair("SUI", "Switzerland"));
+    countryNames.insert(make_pair("TUN", "Tunisia "));
 
     placeBetPage->clear();
 
