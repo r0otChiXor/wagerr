@@ -130,7 +130,7 @@ std::vector<std::vector<std::string>> getEventResults() {
             resultsBocksIndex = chainActive[nCurrentHeight - 1440];
         }
         else {
-            resultsBocksIndex = chainActive[nCurrentHeight - 720];
+            resultsBocksIndex = chainActive[nCurrentHeight - 10];
         }
 
         // Traverse the blockchain to find results.
@@ -198,7 +198,7 @@ std::vector<std::vector<std::string>> checkResults( std::vector<std::vector<std:
     if (Params().NetworkID() == CBaseChainParams::MAIN) {
         resultsBocksIndex = chainActive[nCurrentHeight - 1440]; 
     } else {
-        resultsBocksIndex = chainActive[nCurrentHeight -720];
+        resultsBocksIndex = chainActive[nCurrentHeight - 1440];
     }
 
     // Check if there is a result already posted for an event in the last x blocks
@@ -266,7 +266,7 @@ std::vector<CTxOut> GetBetPayouts() {
     // Discard all the Bet and Event transactions before a given block.
     if(nSubmittedHeight < (nCurrentHeight - nBetingStartBlock)) {
 
-        // Traverse the blockchain for all bets on a result.
+        // Traverse the blockchain for an event to match result and all the bets on a result.
         for(unsigned int currResult = 0; currResult < results.size(); currResult++) {
 
             CBlockIndex *BlocksIndex = NULL;
@@ -329,8 +329,6 @@ std::vector<CTxOut> GetBetPayouts() {
 
                                 CTxDestination address;
                                 ExtractDestination(tx.vout[0].scriptPubKey, address);
-
-                                printf( "Addresssssssss: %s", CBitcoinAddress( address ).ToString().c_str() );
 
                                 printf("Event OP CODE - %s \n", betDescr.c_str());
 

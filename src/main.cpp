@@ -3264,11 +3264,11 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     }
     else {
         // Trigger every ten blocks testnet.
-        triggerBetPayouts = 1;
+        triggerBetPayouts = 10;
     }
 
     // Trigger the bet payout.
-    if( !fVerifyingBlocks && pindex->nHeight % triggerBetPayouts == 0 ){
+    if( pindex->nHeight % triggerBetPayouts == 0 ){
 
         std::vector<CTxOut> vexpectedPayouts = GetBetPayouts();
         nExpectedMint += GetBlockPayouts(vexpectedPayouts, nMNBetReward);
