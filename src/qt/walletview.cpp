@@ -332,9 +332,9 @@ void WalletView::gotoPlaceBetPage(QString addr)
     countryNames.insert(make_pair("GER", "Germany"));
     countryNames.insert(make_pair("IRN", "Iran"));
     countryNames.insert(make_pair("ISL", "Iceland"));
-    countryNames.insert(make_pair("KSA", "Kazakhstan"));
+    countryNames.insert(make_pair("KSA", "Saudi Arabia"));
     countryNames.insert(make_pair("MAR", "Morocco"));
-    countryNames.insert(make_pair("MEX", "Mexica"));
+    countryNames.insert(make_pair("MEX", "Mexico"));
     countryNames.insert(make_pair("PER", "Peru"));
     countryNames.insert(make_pair("POR", "Portugal"));
     countryNames.insert(make_pair("RUS", "Russia"));
