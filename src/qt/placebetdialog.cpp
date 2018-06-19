@@ -215,43 +215,20 @@ PlaceBetDialog::~PlaceBetDialog()
 
 void PlaceBetDialog::on_placeBetButton_clicked()
 {
-printf("on_placeBetButton_clicked\n");
-    if (!betEvent) { // TODO Popup
-printf("on_placeBetButton_clicked: !betEvent\n");
+    if (!model || !model->getOptionsModel())
+        return;
+
+    if (!betEvent) {
+        // process prepareStatus and on error generate message shown to user
+        processPlaceBetReturn(WalletModel::NoBetSelected,
+            BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), 0), true);
         return;
     }
-    // if (!model || !model->getOptionsModel())
-    //     return;
 
-    QList<SendCoinsRecipient> recipients;
-    // bool valid = true;
-
-    // for (int i = 0; i < ui->events->count(); ++i) {
-    //     PlaceBetEvent* event = qobject_cast<PlaceBetEvent*>(ui->events->itemAt(i)->widget());
-
-    //     //UTXO splitter - address should be our own
-    //     CBitcoinAddress address = event->getValue().address.toStdString();
-    //     // if (!model->isMine(address) && ui->splitBlockCheckBox->checkState() == Qt::Checked) {
-    //     //     CoinControlDialog::coinControl->fSplitBlock = false;
-    //     //     ui->splitBlockCheckBox->setCheckState(Qt::Unchecked);
-    //     //     QMessageBox::warning(this, tr("Send Coins"),
-    //     //         tr("The split block tool does not work when sending to outside addresses. Try again."),
-    //     //         QMessageBox::Ok, QMessageBox::Ok);
-    //     //     return;
-    //     // }
-
-    //     if (event) {
-    //         if (event->validate()) {
-    //             recipients.append(event->getValue());
-    //         } else {
-    //             valid = false;
-    //         }
-    //     }
-    // }
-
-    // if (!valid || recipients.isEmpty()) {
-    //     return;
-    // }
+    if (!ui->payAmount->validate() || ui->payAmount->value(0) <= 0) {
+        ui->payAmount->setValid(false);
+        return;
+    }
 
     // //set split block in model
     // // CoinControlDialog::coinControl->fSplitBlock = ui->splitBlockCheckBox->checkState() == Qt::Checked;
@@ -281,132 +258,90 @@ printf("on_placeBetButton_clicked: !betEvent\n");
     // }
 
 
-    // // Format confirmation message
-    QStringList formatted;
-    // foreach (const SendCoinsRecipient& rcp, recipients) {
-    //     // generate bold amount string
-    //     QString amount = "<b>" + BitcoinUnits::formatHtmlWithUnit(model->getOptionsModel()->getDisplayUnit(), rcp.amount);
-    //     amount.append("</b> ").append(strFunds);
-
-    //     // generate monospace address string
-    //     QString address = "<span style='font-family: monospace;'>" + rcp.address;
-    //     address.append("</span>");
-
-    //     QString recipientElement;
-
-    //     if (!rcp.paymentRequest.IsInitialized()) // normal payment
-    //     {
-    //         if (rcp.label.length() > 0) // label with address
-    //         {
-    //             recipientElement = tr("%1 to %2").arg(amount, GUIUtil::HtmlEscape(rcp.label));
-    //             recipientElement.append(QString(" (%1)").arg(address));
-    //         } else // just address
-    //         {
-    //             recipientElement = tr("%1 to %2").arg(amount, address);
-    //         }
-    //     } else if (!rcp.authenticatedMerchant.isEmpty()) // secure payment request
-    //     {
-    //         recipientElement = tr("%1 to %2").arg(amount, GUIUtil::HtmlEscape(rcp.authenticatedMerchant));
-    //     } else // insecure payment request
-    //     {
-    //         recipientElement = tr("%1 to %2").arg(amount, address);
-    //     }
-
-    //     if (CoinControlDialog::coinControl->fSplitBlock) {
-    //         recipientElement.append(tr(" split into %1 outputs using the UTXO splitter.").arg(CoinControlDialog::coinControl->nSplitBlock));
-    //     }
-
-    //     formatted.append(recipientElement);
-    // }
-
-    // fNewRecipientAllowed = false;
-
-    // // request unlock only if was locked or unlocked for mixing:
-    // // this way we let users unlock by walletpassphrase or by menu
-    // // and make many transactions while unlocking through this dialog
-    // // will call relock
-    // WalletModel::EncryptionStatus encStatus = model->getEncryptionStatus();
-    // if (encStatus == model->Locked || encStatus == model->UnlockedForAnonymizationOnly) {
-    //     WalletModel::UnlockContext ctx(model->requestUnlock(AskPassphraseDialog::Context::Send_WGR, true));
-    //     if (!ctx.isValid()) {
-    //         // Unlock wallet was cancelled
-    //         fNewRecipientAllowed = true;
-    //         return;
-    //     }
-    //     send(recipients, strFee, formatted);
-    //     return;
-    // }
-    // // already unlocked or not encrypted at all
     CAmount amount = ui->payAmount->value();
     std::string eventId = betEvent->id;
     std::string team = betTeamToWin;
-printf("on_placeBetButton_clicked: about to print\n");
-printf("on_placeBetButton_clicked: betEvent: %ld %s %s\n", amount, eventId.c_str(), team.c_str());
+
+    // request unlock only if was locked or unlocked for mixing:
+    // this way we let users unlock by walletpassphrase or by menu
+    // and make many transactions while unlocking through this dialog
+    // will call relock
+    WalletModel::EncryptionStatus encStatus = model->getEncryptionStatus();
+    if (encStatus == model->Locked || encStatus == model->UnlockedForAnonymizationOnly) {
+        WalletModel::UnlockContext ctx(model->requestUnlock(AskPassphraseDialog::Context::Send_WGR, true));
+        if (!ctx.isValid()) {
+            // Unlock wallet was cancelled
+            return;
+        }
+        send(amount, eventId, team);
+        return;
+    }
+    // already unlocked or not encrypted at all
     send(amount, eventId, team);
 }
 
 void PlaceBetDialog::send(CAmount amount, const std::string& eventId, const std::string& teamToWin)
 {
-    QString questionString = tr("Are you sure you want to send?");
-    questionString.append("<br /><br />%1");
+    QList<SendCoinsRecipient> recipients;
+    WalletModelTransaction currentTransaction(recipients);
 
-printf("PlaceBetDialog::send\n");
+    WalletModel::SendCoinsReturn prepareStatus;
     if (!betEvent) {
-printf("PlaceBetDialog::send: !betEvent\n");
-        // TODO Present the user with an appropriate error message.
+        // TODO This check is made redundant by the check made in
+        // `on_placeBetButton_clicked`.
+        prepareStatus = WalletModel::NoBetSelected;
+    } else {
+        prepareStatus = model->prepareBetTransaction(currentTransaction, amount, eventId, teamToWin);
+    }
+
+    // process prepareStatus and on error generate message shown to user
+    processPlaceBetReturn(prepareStatus,
+        BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), currentTransaction.getTransactionFee()), true);
+
+    if (prepareStatus.status != WalletModel::OK) {
         return;
     }
 
-//     // if (txFee > 0) {
-//     if (true) {
-//         // append fee string if a fee is required
-//         questionString.append("<hr /><span style='color:#aa0000;'>");
-//         // questionString.append(BitcoinUnits::formatHtmlWithUnit(model->getOptionsModel()->getDisplayUnit(), txFee));
-// // questionString.append(BitcoinUnits::formatHtmlWithUnit(model->getOptionsModel()->getDisplayUnit(), 10.506));
-//         questionString.append("</span> ");
-//         questionString.append(tr("are added as transaction fee"));
-//         questionString.append(" ");
-//         questionString.append(strFee);
-// 
-//         // // append transaction size
-//         // questionString.append(" (" + QString::number((double)currentTransaction.getTransactionSize() / 1000) + " kB)");
-//         questionString.append(" (" + QString::number((double)10.205 / 1000) + " kB)");
-//     }
+    CAmount txFee = currentTransaction.getTransactionFee();
+    QString questionString = tr("Are you sure you want to send?!");
+    questionString.append("<br /><br />%1");
+
+    if (txFee > 0) {
+        // append fee string if a fee is required
+        questionString.append("<hr /><span style='color:#aa0000;'>");
+        questionString.append(BitcoinUnits::formatHtmlWithUnit(model->getOptionsModel()->getDisplayUnit(), txFee));
+        questionString.append("</span> ");
+        questionString.append(tr("are added as transaction fee"));
+        questionString.append(" ");
+
+        // append transaction size
+        questionString.append(" (" + QString::number((double)currentTransaction.getTransactionSize() / 1000) + " kB)");
+    }
 
     // Display message box
     QMessageBox::StandardButton retval = QMessageBox::question(this, tr("Confirm place bet"),
-        questionString.arg("" /*formatted.join("<br />")*/),
+        questionString.arg(""),
         QMessageBox::Yes | QMessageBox::Cancel,
         QMessageBox::Cancel);
 
     if (retval != QMessageBox::Yes) {
-        // fNewRecipientAllowed = true;
         return;
     }
 
-printf("PlaceBetDialog::send: about to print\n");
-printf("PlaceBetDialog::send: %ld %s %s\n", amount, eventId.c_str(), teamToWin.c_str());
     // now send the prepared transaction
-// get amount from text box
-    WalletModel::StatusCode sendStatus = model->placeBet(amount, eventId, teamToWin);
-    // process sendStatus and on error generate message shown to user
-    // ---> processPlaceBetReturn(sendStatus);
+    WalletModel::SendCoinsReturn sendStatus = model->placeBet(currentTransaction, amount, eventId, teamToWin);
+    processPlaceBetReturn(sendStatus);
 
-    // if (sendStatus.status == WalletModel::OK) {
-    //     accept();
-    //     CoinControlDialog::coinControl->UnSelectAll();
-    //     coinControlUpdateLabels();
-    // }
-    // fNewRecipientAllowed = true;
+    if (sendStatus.status == WalletModel::OK) {
+        accept();
+    }
 }
 
 void PlaceBetDialog::clear()
 {
-    // Remove events until only one left
     while (ui->events->count()) {
         ui->events->takeAt(0)->widget()->deleteLater();
     }
-    // addEntry();
 
     updateTabsAndLabels();
 }
@@ -709,6 +644,9 @@ void PlaceBetDialog::processPlaceBetReturn(const WalletModel::SendCoinsReturn& s
     case WalletModel::InsaneFee:
         msgParams.first = tr("A fee %1 times higher than %2 per kB is considered an insanely high fee.").arg(10000).arg(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), ::minRelayTxFee.GetFeePerK()));
         break;
+    case WalletModel::NoBetSelected:
+        msgParams.first = tr("Please select an event outcome to bet on.");
+        break;
     // included to prevent a compiler warning.
     case WalletModel::OK:
     default:
@@ -727,7 +665,7 @@ void PlaceBetDialog::processPlaceBetReturn(const WalletModel::SendCoinsReturn& s
         }
     }
 
-    emit message(tr("Send Coins"), msgParams.first, msgParams.second);
+    emit message(tr("Place Bet"), msgParams.first, msgParams.second);
 }
 
 void PlaceBetDialog::minimizeFeeSection(bool fMinimize)
