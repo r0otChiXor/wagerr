@@ -3267,7 +3267,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         triggerBetPayouts = 10;
     }
 
-    // Trigger the bet payout.
+    // Trigger the bet payout verification.
     if( pindex->nHeight % triggerBetPayouts == 0 ){
 
         std::vector<CTxOut> vexpectedPayouts = GetBetPayouts();

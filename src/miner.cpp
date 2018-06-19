@@ -718,12 +718,29 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
         else {
 
             std::vector<CTxOut> voutPayouts;
+            int triggerBetPayouts = 0;
+            if (Params().NetworkID() == CBaseChainParams::MAIN) {
+                // trigger once a day mainnet.
+                triggerBetPayouts = 1440;
+            }
+            else {
+                // Trigger every ten blocks testnet.
+                triggerBetPayouts = 10;
+            }
 
-            voutPayouts = GetBetPayouts();
-            GetBlockPayouts( voutPayouts, nFees );
+            // Trigger the bet payout.
+            if( nHeight % triggerBetPayouts == 0 ){
 
-            printf("Vector Payouts count + Fees: %li %li \n", voutPayouts.size(), nFees ) ;
-            
+                std::vector<CTxOut> voutPayouts = GetBetPayouts();
+                GetBlockPayouts(voutPayouts, nFees);
+
+                for( unsigned int l = 0; l < voutPayouts.size(); l++ ){
+                    LogPrintf( "%s - Including bet payment: %s \n", __func__, voutPayouts[l].ToString().c_str() );
+                }
+
+                LogPrintf( "%s - MN betting fee payout: %li \n", __func__, nFees );
+            }
+
             // Fill coin stake transaction.
             pwallet->FillCoinStake(txCoinStake, nFees, voutPayouts); // Kokary: add betting fee
 
