@@ -459,7 +459,7 @@ void PlaceBetDialog::prepareBet(CEvent* event, const std::string& teamToWin, con
         evtDes += " to win ";
     }
     evtDes += oddsToWin;
-    evtDes += "< br/>\n";
+    evtDes += "\n";
 
     it = countryNames.find(event->homeTeam);
     team = event->homeTeam;
