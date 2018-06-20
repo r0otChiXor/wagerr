@@ -128,10 +128,10 @@ printf("CEvent::ParseEvent: %s\n", descr.c_str());
         fields[5],
         fields[3],
         fields[6],
-        fields[8],
+        std::to_string(std::stod(fields[8]) / 10000),
         fields[7],
-        fields[9],
-        fields[10]
+        std::to_string(std::stod(fields[9]) / 10000),
+        std::to_string(std::stod(fields[10]) / 10000)
     );
 }
 

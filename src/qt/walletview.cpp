@@ -395,7 +395,7 @@ void WalletView::gotoPlaceBetPage(QString addr)
                 std::string scriptPubKey = txout.scriptPubKey.ToString();
 
                 // TODO Remove hard-coded values from this block.
-                if (match && scriptPubKey.length() > 0 && strncmp(scriptPubKey.c_str(), "OP_RETURN", 9) == 0) {
+                if (scriptPubKey.length() > 0 && strncmp(scriptPubKey.c_str(), "OP_RETURN", 9) == 0) {
                     vector<unsigned char> v = ParseHex(scriptPubKey.substr(9, string::npos));
                     std::string evtDescr(v.begin(), v.end());
                     std::vector<std::string> strs;
@@ -475,9 +475,9 @@ void WalletView::gotoPlaceBetPage(QString addr)
                     // }
 
                     time_t currentTime = std::time(0);
-                    //only show events up until 20 minutes before they start
-                    if( time > (currentTime + 1200)){
-                        placeBetPage->addEvent(
+                    //only show events up until 20 minutes(1200 seconds) before they start
+                    if( time > (currentTime - 1200)){
+                       placeBetPage->addEvent(
                             event,
                             evtDes,
                             strs[8],
