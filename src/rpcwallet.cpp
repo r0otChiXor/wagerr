@@ -114,6 +114,7 @@ UniValue listevents(const UniValue& params, bool fHelp)
                     std::vector<std::string> strs;
                     boost::split(strs, evtDescr, boost::is_any_of("|"));
 
+                    printf("%s \n",evtDescr.c_str());
                     if (strs.size() != 11 || strs[0] != "1") {
                         continue;
                     }
@@ -237,7 +238,7 @@ UniValue listbets(const UniValue& params, bool fHelp)
                         std::vector<std::string> strs;
                         boost::split(strs, betDescr, boost::is_any_of("|"));
 
-                        if (strs.size() != 3 || strs[0] != "2") {
+                        if (strs.size() != 4 || strs[0] != "2") {
                             continue;
                         }
 
