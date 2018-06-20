@@ -294,6 +294,16 @@ void EnsureWalletIsUnlocked()
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 }
 
+void EnsureEnoughWagerr(CAmount total)
+{
+
+    CAmount nBalance = pwalletMain->GetBalance();
+
+    if (total > nBalance) {
+         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Error: Not enough funds in wallet or account");
+    }
+}
+
 void WalletTxToJSON(const CWalletTx& wtx, UniValue& entry)
 {
     int confirms = wtx.GetDepthInMainChain(false);
@@ -625,10 +635,16 @@ UniValue placebet(const UniValue& params, bool fHelp)
         wtx.mapValue["to"] = params[4].get_str();
 
     EnsureWalletIsUnlocked();
+    EnsureEnoughWagerr(nAmount);
 
     CBitcoinAddress address("");
     std::string eventId = params[0].get_str();
     std::string team = params[1].get_str();
+    // || std::find(rd1EventIds.begin(),rd1EventIds.end(),eventId)
+    if(std::find(rd1Teams.begin(),rd1Teams.end(), team) == rd1Teams.end() || std::find(rd1EventIds.begin(),rd1EventIds.end(),eventId) == rd1EventIds.end()){
+
+        throw JSONRPCError(RPC_BET_DETAILS_ERROR, "Error: Incorrect bet details. Please ensure your team and event are correct.");
+    }
 
     // TODO `address` isn't used when adding the following transaction to the
     // blockchain, so ideally it would not need to be supplied to `SendMoney`.
