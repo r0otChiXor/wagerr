@@ -63,7 +63,7 @@ private:
     ClientModel* clientModel;
     WalletModel* model;
     bool fNewRecipientAllowed;
-    void send(CAmount amount, const std::string& eventId, const std::string& teamToWin);
+    void send(CAmount amount, const std::string& eventId, const std::string& teamToWin, const std::string& eventTime);
     bool fFeeMinimized;
     CEvent* betEvent;
     std::string betTeamToWin;

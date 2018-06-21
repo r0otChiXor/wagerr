@@ -261,6 +261,7 @@ void PlaceBetDialog::on_placeBetButton_clicked()
     CAmount amount = ui->payAmount->value();
     std::string eventId = betEvent->id;
     std::string team = betTeamToWin;
+    std::string eventTime = betEvent->starting;
 
     // request unlock only if was locked or unlocked for mixing:
     // this way we let users unlock by walletpassphrase or by menu
@@ -273,14 +274,14 @@ void PlaceBetDialog::on_placeBetButton_clicked()
             // Unlock wallet was cancelled
             return;
         }
-        send(amount, eventId, team);
+        send(amount, eventId, team, eventTime);
         return;
     }
     // already unlocked or not encrypted at all
-    send(amount, eventId, team);
+    send(amount, eventId, team, eventTime);
 }
 
-void PlaceBetDialog::send(CAmount amount, const std::string& eventId, const std::string& teamToWin)
+void PlaceBetDialog::send(CAmount amount, const std::string& eventId, const std::string& teamToWin, const std::string& eventTime)
 {
     QList<SendCoinsRecipient> recipients;
     WalletModelTransaction currentTransaction(recipients);
@@ -328,10 +329,25 @@ void PlaceBetDialog::send(CAmount amount, const std::string& eventId, const std:
         return;
     }
 
+    //check if the event in furthur than 20 minutes into the future
+    time_t currentTime = std::time(0);
+    if((currentTime + 1200) > std::stoi(eventTime)) {
+        QString questionString1 = tr("Betting expired! Please ensure you bet more than 20 minutes before the event start time!");
+        questionString1.append("<br /><br />%1");
+
+        QMessageBox::StandardButton retval = QMessageBox::question(this, tr("Cannot Bet!"),
+        questionString1.arg(""),
+        QMessageBox::Yes | QMessageBox::Cancel,
+        QMessageBox::Cancel);
+
+        return;
+    }
+
     // now send the prepared transaction
     WalletModel::SendCoinsReturn sendStatus = model->placeBet(currentTransaction, amount, eventId, teamToWin);
     processPlaceBetReturn(sendStatus);
 
+    //need to fix the 
     // if (sendStatus.status == WalletModel::OK) {
     //     printf("I accept your wagerr good sir!! \n");
     //     accept();

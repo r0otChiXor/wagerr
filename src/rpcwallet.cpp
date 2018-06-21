@@ -613,6 +613,8 @@ UniValue placebet(const UniValue& params, bool fHelp)
     if (fHelp || params.size() < 3 || params.size() > 5)
         throw runtime_error(
             "placebet \"event-id\" \"team\" amount ( \"comment\" \"comment-to\" )\n"
+            "\n WARNING!!! - Betting closes 20 minutes before event start time. Any bets placed after this time will be \n"
+            "invalid and will not be paid out! \n"
             "\nPlace an amount as a bet on an event. The amount is a real and is rounded to the nearest 0.00000001\n" +
             HelpRequiringPassphrase() +
             "\nArguments:\n"
