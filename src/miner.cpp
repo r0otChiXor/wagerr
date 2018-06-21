@@ -727,22 +727,23 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
                 // Trigger every ten blocks testnet.
                 triggerBetPayouts = 10;
             }
+            CAmount nMNBetReward = 0;
 
             // Trigger the bet payout.
             if( nHeight % triggerBetPayouts == 0 ){
 
                 std::vector<CTxOut> voutPayouts = GetBetPayouts();
-                GetBlockPayouts(voutPayouts, nFees);
+                GetBlockPayouts(voutPayouts, nMNBetReward);
 
                 for( unsigned int l = 0; l < voutPayouts.size(); l++ ){
                     LogPrintf( "%s - Including bet payment: %s \n", __func__, voutPayouts[l].ToString().c_str() );
                 }
 
-                LogPrintf( "%s - MN betting fee payout: %li \n", __func__, nFees );
+                LogPrintf( "%s - MN betting fee payout: %li \n", __func__, nMNBetReward );
             }
 
             // Fill coin stake transaction.
-            pwallet->FillCoinStake(txCoinStake, nFees, voutPayouts); // Kokary: add betting fee
+            pwallet->FillCoinStake(txCoinStake, nMNBetReward, voutPayouts); // Kokary: add betting fee
 
             //Sign with updated tx
             pwallet->SignCoinStake(txCoinStake, vwtxPrev);
