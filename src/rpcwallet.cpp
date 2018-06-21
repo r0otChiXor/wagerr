@@ -119,6 +119,12 @@ UniValue listevents(const UniValue& params, bool fHelp)
                         continue;
                     }
 
+                    time_t time = (time_t) std::strtol(strs[3].c_str(), nullptr, 10);
+                    time_t currentTime = std::time(0);
+                    if( time < (currentTime - 1200) ){
+                        continue;
+                    }
+
                     // TODO Handle version field.
 
                     UniValue evt(UniValue::VOBJ);
