@@ -600,7 +600,7 @@ UniValue placebet(const UniValue& params, bool fHelp)
                                             "#048","#049","#050","#060","#061","#062","#063","#064","#065","#066","#067","#068","#069","#070"};
 
     std::vector<std::string> rd1Teams = {"ARG", "AUS", "BEL", "BRA", "COL", "CRC", "CRO", "DEN", "EGY", "ENG", "FRA", "GER", "ISL", "IRN", "JPN", "KOR",
-                                         "MEX", "MAR", "NGA", "PAN", "PER", "POL", "POR", "RUS", "KSA", "SEN", "SRB", "ESP", "SWE", "SUI", "TUN", "URU",};
+                                         "MEX", "MAR", "NGA","NIG", "PAN", "PER", "POL", "POR", "RUS", "KSA", "SEN", "SRB", "ESP", "SWE", "SUI", "TUN", "URU",};
 
     //if(std::find(rd1EventIds.begin(), rd1EventIds.end(), params[0].get_str()) != rd1EventIds.end()){
     //    throw runtime_error("Not a valid event ID, please ensure you entered the Event ID correctly.");

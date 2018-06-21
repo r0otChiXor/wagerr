@@ -332,9 +332,12 @@ void PlaceBetDialog::send(CAmount amount, const std::string& eventId, const std:
     WalletModel::SendCoinsReturn sendStatus = model->placeBet(currentTransaction, amount, eventId, teamToWin);
     processPlaceBetReturn(sendStatus);
 
-    if (sendStatus.status == WalletModel::OK) {
-        accept();
-    }
+    // if (sendStatus.status == WalletModel::OK) {
+    //     printf("I accept your wagerr good sir!! \n");
+    //     accept();
+    // }else{
+    //     printf("I DO NOT ACCEPT your wagerr good sir!! \n");
+    // }
 }
 
 void PlaceBetDialog::clear()
@@ -385,6 +388,7 @@ void PlaceBetDialog::prepareBet(CEvent* event, const std::string& teamToWin, con
     countryNames.insert(make_pair("JPN", "Japan"));
     countryNames.insert(make_pair("KOR", "Korea Republic"));
     countryNames.insert(make_pair("NGA", "Nigeria"));
+    countryNames.insert(make_pair("NIG", "Nigeria"));
     countryNames.insert(make_pair("PAN", "Panama"));
     countryNames.insert(make_pair("POL", "Poland"));
     countryNames.insert(make_pair("SEN", "Senegal"));

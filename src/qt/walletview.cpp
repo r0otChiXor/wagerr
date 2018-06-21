@@ -347,6 +347,7 @@ void WalletView::gotoPlaceBetPage(QString addr)
     countryNames.insert(make_pair("JPN", "Japan"));
     countryNames.insert(make_pair("KOR", "Korea Republic"));
     countryNames.insert(make_pair("NGA", "Nigeria"));
+    countryNames.insert(make_pair("NIG", "Nigeria"));
     countryNames.insert(make_pair("PAN", "Panama"));
     countryNames.insert(make_pair("POL", "Poland"));
     countryNames.insert(make_pair("SEN", "Senegal"));
@@ -476,7 +477,7 @@ void WalletView::gotoPlaceBetPage(QString addr)
 
                     time_t currentTime = std::time(0);
                     //only show events up until 20 minutes(1200 seconds) before they start
-                    if( time > (currentTime - 1200)){
+                    if( time > (currentTime + 1200)){
                        placeBetPage->addEvent(
                             event,
                             evtDes,
