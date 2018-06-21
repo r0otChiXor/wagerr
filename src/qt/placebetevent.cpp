@@ -120,18 +120,21 @@ CEvent* CEvent::ParseEvent(const std::string& descr)
 // 
 
     const std::string x = "";
-printf("CEvent::ParseEvent: about to print\n");
-printf("CEvent::ParseEvent: %s\n", descr.c_str());
+    std::string winOddsString = std::to_string(std::stod(fields[8]) / 10000);
+    std::string loseOddsString = std::to_string(std::stod(fields[9]) / 10000);
+    std::string drawOddsString = std::to_string(std::stod(fields[10]) / 10000);
+
+    printf("CEvent::ParseEvent: %s\n", descr.c_str());
     return new CEvent(
         fields[2],
         fields[4],
         fields[5],
         fields[3],
         fields[6],
-        std::to_string(std::stod(fields[8]) / 10000),
+        winOddsString.substr(0, winOddsString.size() -4),
         fields[7],
-        std::to_string(std::stod(fields[9]) / 10000),
-        std::to_string(std::stod(fields[10]) / 10000)
+        loseOddsString.substr(0, loseOddsString.size() -4),
+        drawOddsString.substr(0, drawOddsString.size() -4)
     );
 }
 

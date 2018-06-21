@@ -3020,9 +3020,6 @@
                <height>0</height>
               </size>
              </property>
-             <property name="toolTip">
-              <string>Confirm the send action</string>
-             </property>
              <property name="text">
               <string>P&amp;lace Bet</string>
              </property>

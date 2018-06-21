@@ -249,8 +249,8 @@ UniValue listbets(const UniValue& params, bool fHelp)
                         }
 
                         UniValue entry(UniValue::VOBJ);
-                        entry.push_back(Pair("event-id", strs[1]));
-                        entry.push_back(Pair("team-to-win", strs[2]));
+                        entry.push_back(Pair("event-id", strs[2]));
+                        entry.push_back(Pair("team-to-win", strs[3]));
                         entry.push_back(Pair("amount", ValueFromAmount(txout.nValue)));
                         ret.push_back(entry);
                     }
