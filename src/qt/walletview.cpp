@@ -358,6 +358,7 @@ void WalletView::gotoPlaceBetPage(QString addr)
     placeBetPage->clear();
 
     std::map<uint256, uint32_t> coreWalletVouts;
+    std::vector<CEvent *> eventsVector;
     // FIXME Copied from `rpcwallet.cpp`.
     // TODO We currently search the entire block chain every time we query the
     // current events. Instead, the events up to a particular block/transaction
@@ -396,98 +397,29 @@ void WalletView::gotoPlaceBetPage(QString addr)
                 std::string scriptPubKey = txout.scriptPubKey.ToString();
 
                 // TODO Remove hard-coded values from this block.
-                if (scriptPubKey.length() > 0 && strncmp(scriptPubKey.c_str(), "OP_RETURN", 9) == 0) {
+                if (match && scriptPubKey.length() > 0 && strncmp(scriptPubKey.c_str(), "OP_RETURN", 9) == 0) {
                     vector<unsigned char> v = ParseHex(scriptPubKey.substr(9, string::npos));
                     std::string evtDescr(v.begin(), v.end());
                     std::vector<std::string> strs;
                     boost::split(strs, evtDescr, boost::is_any_of("|"));
 
-                    if (strs.size() != 11 || strs[0] != "1") {
+                    if (strs.size() != 11 || strs[0] != "1" || strs[1] != "1.0") {
                         continue;
                     }
 
-                    evtDes = "";
-
-                    std::map<std::string, std::string>::iterator it;
-                    it = eventNames.find(strs[4]);
-                    // TODO Investigate whether it would be better to skip event
-                    // descriptions with unsupported fields rather than to
-                    // output those fields.
-                    evtDes += it == eventNames.end() ? strs[4] : it->second;
-
-                    evtDes += " ";
-                    it = roundNames.find(strs[5]);
-                    evtDes += it == roundNames.end() ? strs[5] : it->second;
-                    evtDes += "   ";
-
-                    // TODO Handle version field.
-
-                    // UniValue evt(UniValue::VOBJ);
-
-                    // evt.push_back(Pair("id", strs[2]));
-                    // evt.push_back(Pair("name", strs[4]));
-                    // evt.push_back(Pair("round", strs[5]));
-                    // evt.push_back(Pair("starting", strs[3]));
-
-                    // evtDes += evtDescr;
-                    // evtDes += " ";
                     time_t time = (time_t) std::strtol(strs[3].c_str(), nullptr, 10);
-                    tm *ptm = std::gmtime(&time);
-                    static const char mon_name[][4] = {
-                        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                        "Jul", "Aug", "Sep", "Aug", "Nov", "Dec"
-                    };
-                    char result[22];
-                    // evtDes += evtDescr;
-                    sprintf(
-                        result,
-                        "%.2d:%.2d UTC+0   %.2d %3s",
-                        ptm->tm_hour,
-                        ptm->tm_min,
-                        ptm->tm_mday,
-                        mon_name[ptm->tm_mon]
-                    );
-                    evtDes += result;
-
-                    evtDes += "   ";
-                    it = countryNames.find(strs[6]);
-                    evtDes += it == countryNames.end() ? strs[6] : it->second;
-                    evtDes += " V ";
-                    it = countryNames.find(strs[7]);
-                    evtDes += it == countryNames.end() ? strs[7] : it->second;
-
-                    // UniValue teams(UniValue::VARR);
-                    // for (unsigned int t = 6; t <= 7; t++) {
-                    //     UniValue team(UniValue::VOBJ);
-                    //     team.push_back(Pair("name", strs[t]));
-                    //     team.push_back(Pair("odds", strs[t+2]));
-                    //     teams.push_back(team);
-                    // }
-                    // evt.push_back(Pair("teams", teams));
-
-                    // ret.push_back(evt);
-
-                    printf(">!> %s\n", evtDes.c_str());
-
                     CEvent *event = CEvent::ParseEvent(evtDescr);
-                    // if (!event)
-                    // {
-                    //     continue;
-                    // }
 
                     time_t currentTime = std::time(0);
-                    //only show events up until 20 minutes(1200 seconds) before they start
+                    //only add events up until 20 minutes(1200 seconds) before they start
                     if( time > (currentTime + 1200)){
-                       placeBetPage->addEvent(
-                            event,
-                            evtDes,
-                            strs[8],
-                            strs[9],
-                            strs[10]
-                        );
-                    }
-                }
 
+                        //add events to vector
+                        eventsVector.push_back(event);
+                    }
+
+                }
+                
                 txnouttype type;
                 vector<CTxDestination> addrs;
                 int nRequired;
@@ -506,10 +438,92 @@ void WalletView::gotoPlaceBetPage(QString addr)
         pindex = chainActive.Next(pindex);
     }
 
-    // placeBetPage->setAddress(QString::fromStdString(evtDes));
 
-    // if (!addr.isEmpty())
-    //     placeBetPage->setAddress(addr);
+    //sort events by timestamp
+    struct compare_times{
+        inline bool operator() (CEvent *event1, CEvent *event2){
+            return (event1->starting < event2->starting);
+        }
+    };
+    std::sort(eventsVector.begin(), eventsVector.end(), compare_times());
+
+
+
+    //remove duplicates from list (Remove older duplicates)
+    std::vector<CEvent *> cleanEventsVector;
+    for(int i = 0; i < eventsVector.size(); i++ ){
+
+        bool found = false;
+
+        //loop through and check if the eventid matches a result event id
+        for (int j = 0; j < cleanEventsVector.size(); j++) {
+
+            if (eventsVector[i]->id == cleanEventsVector[j]->id) {
+                found = true;
+                //replacing the old event details with the updated event details
+                std::replace(cleanEventsVector.begin(), cleanEventsVector.end(), cleanEventsVector[j], eventsVector[i]);
+            }
+        }
+
+        //if not found put the event into the clean list
+        if(found == false){
+            cleanEventsVector.push_back(eventsVector[i]);
+        }
+    }
+
+
+    //put events on screen
+    for(int i = 0; i < cleanEventsVector.size(); i++ ){
+
+        std::string evtDes = "";
+        time_t time = (time_t) std::strtol(cleanEventsVector[i]->starting.c_str(), nullptr, 10);
+
+        std::map<std::string, std::string>::iterator it;
+        it = eventNames.find(cleanEventsVector[i]->name);
+        // TODO Investigate whether it would be better to skip event
+        // descriptions with unsupported fields rather than to
+        // output those fields.
+        evtDes += it == eventNames.end() ? cleanEventsVector[i]->name : it->second;
+
+        evtDes += " ";
+        it = roundNames.find(cleanEventsVector[i]->round);
+        evtDes += it == roundNames.end() ? cleanEventsVector[i]->round : it->second;
+        evtDes += "   ";
+
+        
+        tm *ptm = std::gmtime(&time);
+        static const char mon_name[][4] = {
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+            "Jul", "Aug", "Sep", "Aug", "Nov", "Dec"
+        };
+        char result[22];
+
+        sprintf(
+            result,
+            "%.2d:%.2d UTC+0   %.2d %3s",
+            ptm->tm_hour,
+            ptm->tm_min,
+            ptm->tm_mday,
+            mon_name[ptm->tm_mon]
+        );
+        evtDes += result;
+
+        evtDes += "   ";
+        it = countryNames.find(cleanEventsVector[i]->homeTeam);
+        evtDes += it == countryNames.end() ? cleanEventsVector[i]->homeTeam : it->second;
+        evtDes += " V ";
+        it = countryNames.find(cleanEventsVector[i]->awayTeam);
+        evtDes += it == countryNames.end() ? cleanEventsVector[i]->awayTeam : it->second;
+
+
+        placeBetPage->addEvent(
+            cleanEventsVector[i],
+            evtDes,
+            cleanEventsVector[i]->homeOdds,
+            cleanEventsVector[i]->awayOdds,
+            cleanEventsVector[i]->drawOdds
+        );
+    }
 }
 
 void WalletView::gotoSignMessageTab(QString addr)

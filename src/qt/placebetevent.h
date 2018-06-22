@@ -16,6 +16,8 @@ public:
     // them using getters and setters, but we make them public for now for speed
     // of implementation.
     std::string id;
+    std::string name;
+    std::string round;
     std::string starting;
     std::string homeTeam;
     std::string homeOdds;

@@ -33,6 +33,8 @@ CEvent::CEvent(
     const std::string& awayOdds,
     const std::string& drawOdds
 ) : id(id),
+    name(name),
+    round(round),
     starting(starting),
     homeTeam(homeTeam),
     homeOdds(homeOdds),
