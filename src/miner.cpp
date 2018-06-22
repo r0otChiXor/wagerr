@@ -64,8 +64,7 @@ public:
 uint64_t nLastBlockTx = 0;
 uint64_t nLastBlockSize = 0;
 int64_t nLastCoinStakeSearchInterval = 0;
-
-int nBetingStartBlock = 23000;
+uint64_t nBettingStartBlock = 26800;
 
 // We want to sort transactions by priority and fee rate, so:
 typedef boost::tuple<double, CFeeRate, const CTransaction*> TxPriority;
@@ -122,7 +121,7 @@ std::vector<std::vector<std::string>> getEventResults() {
     printf("BET PAYOUT BLOCK: %i \n", nCurrentHeight);
 
     // Discard all the result transactions before a given block.
-    if (nSubmittedHeight <= (nCurrentHeight - nBetingStartBlock)) {
+    if (nSubmittedHeight <= (nCurrentHeight - nBettingStartBlock)) {
 
         // Calculate how far back the chain we want to go looking for results.
         CBlockIndex *resultsBocksIndex = NULL;
@@ -263,10 +262,10 @@ std::vector<CTxOut> GetBetPayouts() {
     static int nSubmittedHeight = 0;
     int nCurrentHeight = chainActive.Height();
 
-    // Discard all the Bet and Event transactions before a given block.
-    if(nSubmittedHeight < (nCurrentHeight - nBetingStartBlock)) {
+    // Discard all the Bet and Event transactions before nBettingStartBlock.
+    if(nSubmittedHeight < (nCurrentHeight - nBettingStartBlock)) {
 
-        // Traverse the blockchain for an event to match result and all the bets on a result.
+        // Traverse the blockchain for an event to match a result and all the bets on a result.
         for(unsigned int currResult = 0; currResult < results.size(); currResult++) {
 
             CBlockIndex *BlocksIndex = NULL;
@@ -278,9 +277,10 @@ std::vector<CTxOut> GetBetPayouts() {
             }
 
             CAmount payout = 0 * COIN;
-            double latestHomeOdds = 0.0;
-            double latestAwayOdds = 0.0;
-            double latestDrawOdds = 0.0;
+            unsigned int oddsDivisor    = 10000;
+            unsigned int latestHomeOdds = 0;
+            unsigned int latestAwayOdds = 0;
+            unsigned int latestDrawOdds = 0;
 
             std::string latestHomeTeam;
             std::string latestAwayTeam;
@@ -341,9 +341,9 @@ std::vector<CTxOut> GetBetPayouts() {
 
                                         printf("HomeTeam = %s & AwayTeam = %s \n", latestHomeTeam.c_str(), latestAwayTeam.c_str());
 
-                                        latestHomeOdds = std::stod(homeWinOdds);
-                                        latestAwayOdds = std::stod(awayWinOdds);
-                                        latestDrawOdds = std::stod(drawOdds);
+                                        latestHomeOdds = (unsigned int)std::stoi(homeWinOdds);
+                                        latestAwayOdds = (unsigned int)std::stoi(awayWinOdds);
+                                        latestDrawOdds = (unsigned int)std::stoi(drawOdds);
 
                                         printf("latestHomeOdds = %f & latestAwayOdds = %f & latestDrawOdds = %f \n", latestHomeOdds, latestAwayOdds, latestDrawOdds);
                                     }
@@ -367,19 +367,22 @@ std::vector<CTxOut> GetBetPayouts() {
 
                                     // Calculate winnings.
                                     if( latestHomeTeam == result ) {
-                                        payout = betAmount * latestHomeOdds;
+                                        payout = betAmount * latestHomeOdds / oddsDivisor;
                                     }
                                     else if( latestAwayTeam == result ){
-                                        payout = betAmount * latestAwayOdds;
+                                        payout = betAmount * latestAwayOdds / oddsDivisor;
                                     }
                                     else{
-                                        payout = betAmount * latestDrawOdds;
+                                        payout = betAmount * latestDrawOdds / oddsDivisor;
                                     }
 
                                     CTxDestination address;
                                     ExtractDestination(tx.vout[1].scriptPubKey, address);
 
-                                    printf("WINNING PAYOUT :)  %ld \n", payout);
+
+
+                                    printf("WINNING PAYOUT :)\n");
+                                    printf("WINNING PAYOUT :)  %lli \n", payout);
                                     printf("ADDRESS: %s \n", CBitcoinAddress( address ).ToString().c_str() );
 
                                     vexpectedPayouts.emplace_back( payout, GetScriptForDestination(CBitcoinAddress( address ).Get()));
