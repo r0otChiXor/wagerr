@@ -3264,23 +3264,28 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     }
     else {
         // Trigger every ten blocks testnet.
-        triggerBetPayouts = 10;
+        triggerBetPayouts = 1;
     }
 
     // Trigger the bet payout verification.
-    if( pindex->nHeight % triggerBetPayouts == 0 ){
+    //if( pindex->nHeight % triggerBetPayouts == 0 ){
 
-        std::vector<CTxOut> vexpectedPayouts = GetBetPayouts();
-        nExpectedMint += GetBlockPayouts(vexpectedPayouts, nMNBetReward);
-        nExpectedMint += nMNBetReward;
+        // Add check here -> get all incoming txs that are result txs, then do a payout for each
 
-        for( unsigned int l = 0; l < vexpectedPayouts.size(); l++ ){
-            printf( "EXPECTED: %s \n", vexpectedPayouts[l].ToString().c_str() );
+        // std::vector<CTxOut> vexpectedPayouts = GetBetPayouts();
+        std::vector<CTxOut> vexpectedPayouts = GetBetPayoutsForTransactions(block.vtx);
+        if (vexpectedPayouts.size() > 0) {
+            nExpectedMint += GetBlockPayouts(vexpectedPayouts, nMNBetReward);
+            nExpectedMint += nMNBetReward;
+
+            for (unsigned int l = 0; l < vexpectedPayouts.size(); l++) {
+                printf("MAIN EXPECTED: %s \n", vexpectedPayouts[l].ToString().c_str());
+            }
+
+            printf("Total Amount to Payout: %li \n\n\n\n", nExpectedMint);
+            vexpectedPayouts.clear();
         }
-
-        printf("Total Amount to Payout: %li \n", nExpectedMint  );
-        vexpectedPayouts.clear();
-    }
+    //}
 
     if (!IsBlockValueValid(block, nExpectedMint, pindex->nMint)) {
         LogPrintf( "ConnectBlock() : reward pays too much ( limit=%li)", nExpectedMint);

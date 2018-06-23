@@ -64,7 +64,7 @@ public:
 uint64_t nLastBlockTx = 0;
 uint64_t nLastBlockSize = 0;
 int64_t nLastCoinStakeSearchInterval = 0;
-uint64_t nBettingStartBlock = 26800;
+int nBettingStartBlock = 26800;
 
 // We want to sort transactions by priority and fee rate, so:
 typedef boost::tuple<double, CFeeRate, const CTransaction*> TxPriority;
@@ -123,13 +123,14 @@ std::vector<std::vector<std::string>> getEventResults() {
     // Discard all the result transactions before a given block.
     if (nSubmittedHeight <= (nCurrentHeight - nBettingStartBlock)) {
 
+
         // Calculate how far back the chain we want to go looking for results.
         CBlockIndex *resultsBocksIndex = NULL;
         if (Params().NetworkID() == CBaseChainParams::MAIN) {
             resultsBocksIndex = chainActive[nCurrentHeight - 1440];
         }
         else {
-            resultsBocksIndex = chainActive[nCurrentHeight - 10];
+            resultsBocksIndex = chainActive[nCurrentHeight - 1000];
         }
 
         // Traverse the blockchain to find results.
@@ -145,7 +146,7 @@ std::vector<std::vector<std::string>> getEventResults() {
                     const CTxOut &txout = tx.vout[i];
                     std::string s = txout.scriptPubKey.ToString();
 
-                    if (s.length() > 0) {
+                    //if (s.length() > 0 && CBitcoinAddress(tx.vout[0].ToString()).ToString() == "TDxUUn1vbtKGqWswpCzWTExXKnm3Q3SpMu") {
 
                         // TODO Remove hard-coded values from this block.
                         if (0 == strncmp(s.c_str(), "OP_RETURN", 9)) {
@@ -166,7 +167,7 @@ std::vector<std::vector<std::string>> getEventResults() {
                             //for( unsigned int d = 0; d <= strs.size() -1; d++ ){
                             //    printf( "Value %s \n", strs[d].c_str() );
                             //}
-                            printf("RESULT OP_RETURN -> %s \n", betDescr.c_str());
+                           // printf("RESULT OP_RETURN -> %s \n", betDescr.c_str());
 
                             std::vector<string> entry;
 
@@ -177,7 +178,7 @@ std::vector<std::vector<std::string>> getEventResults() {
 
                             results.push_back(entry);
                         }
-                    }
+                    //}
                 }
             }
 
@@ -210,29 +211,26 @@ std::vector<std::vector<std::string>> checkResults( std::vector<std::vector<std:
             for (unsigned int i = 0; i < tx.vout.size(); i++) {
                 const CTxOut& txout = tx.vout[i];
                 std::string s = txout.scriptPubKey.ToString();
-                if (s.length() > 0) {
+                if (s.length() > 0 && CBitcoinAddress(tx.vout[0].ToString()).ToString() == "TDxUUn1vbtKGqWswpCzWTExXKnm3Q3SpMu") {
 
-                    if (CBitcoinAddress(tx.vout[0].ToString()).ToString() == "TVASr4bm6Rz19udhUWmSGtrrDExCjQdATp") {
+                    if (0 == strncmp(s.c_str(), "OP_RETURN", 9)) {
 
-                        if (0 == strncmp(s.c_str(), "OP_RETURN", 9)) {
+                        vector<unsigned char> v = ParseHex(s.substr(9, string::npos));
+                        std::string betDescr(v.begin(), v.end());
+                        std::vector<std::string> strs;
 
-                            vector<unsigned char> v = ParseHex(s.substr(9, string::npos));
-                            std::string betDescr(v.begin(), v.end());
-                            std::vector<std::string> strs;
+                        boost::split(strs, betDescr, boost::is_any_of("|"));
 
-                            boost::split(strs, betDescr, boost::is_any_of("|"));
+                        //check if the result is the correct result type (3) and size
+                        if (strs.size() != 4 || strs[0] != "3") {
+                            continue;
+                        }
 
-                            //check if the result is the correct result type (3) and size 
-                            if (strs.size() != 4 || strs[0] != "3") {
-                                continue;
-                            }
-
-                            //loop through and check if the eventid matches a result event id
-                            for (unsigned int i = 0; i < results.size(); i++) {
-                                if (results[i][0] == strs[2]) {
-                                    //remove it from the array
-                                    results.erase(results.begin() + i);
-                                }
+                        //loop through and check if the eventid matches a result event id
+                        for (unsigned int i = 0; i < results.size(); i++) {
+                            if (results[i][0] == strs[2]) {
+                                //remove it from the array
+                                results.erase(results.begin() + i);
                             }
                         }
                     }
@@ -246,6 +244,194 @@ std::vector<std::vector<std::string>> checkResults( std::vector<std::vector<std:
     return results;
 }
 
+std::vector<CTxOut> GetBetPayoutsForTransactions(std::vector<CTransaction> txs) {
+    // `results` maps event IDs to their outcomes.
+    map<std::string, std::string> results;
+    BOOST_FOREACH(CTransaction &tx, txs) {
+        for(unsigned int i = 0; i < tx.vout.size(); i++) {
+            const CTxOut &txout = tx.vout[i];
+            std::string s = txout.scriptPubKey.ToString();
+
+            //if (s.length() > 0 && CBitcoinAddress(tx.vout[0].ToString()).ToString() == "TDxUUn1vbtKGqWswpCzWTExXKnm3Q3SpMu") {
+
+            // TODO Remove hard-coded values from this block.
+            if (0 == strncmp(s.c_str(), "OP_RETURN", 9)) {
+
+                // Get OP CODE from transactions.
+                vector<unsigned char> v = ParseHex(s.substr(9, string::npos));
+                std::string betDescr(v.begin(), v.end());
+                std::vector<std::string> strs;
+
+                boost::split(strs, betDescr, boost::is_any_of("|"));
+
+                // Only look for result transactions.
+                if (strs.size() != 4 || strs[0] != "3") {
+                    break;
+                }
+                printf("Searching for %s -> %s\n", strs[2].c_str(), strs[3].c_str());
+
+                results[strs[2]] = strs[3];
+            }
+        }
+    }
+
+    // TODO Most of the remainder of this function has been copied from
+    // `GetBetPayouts` and should be abstracted to remove duplication.
+
+    // `vOdds` maps event IDs to the winner odds.
+    map<std::string, unsigned int> vOdds;
+    std::vector<CTxOut> vexpectedPayouts;
+
+    static int nSubmittedHeight = 0;
+    int nCurrentHeight = chainActive.Height();
+
+    // Discard all the Bet and Event transactions before nBettingStartBlock.
+    if(nSubmittedHeight <= (nCurrentHeight - nBettingStartBlock)) {
+
+        // Traverse the blockchain for an event to match a result and all the bets on a result.
+        for(unsigned int currResult = 0; currResult < results.size(); currResult++) {
+
+            CBlockIndex *BlocksIndex = NULL;
+            if (Params().NetworkID() == CBaseChainParams::MAIN) {
+                BlocksIndex = chainActive[nCurrentHeight - 129600];
+            }
+            else {
+                BlocksIndex = chainActive[nCurrentHeight - 720];
+            }
+
+            CAmount payout = 0 * COIN;
+            unsigned int oddsDivisor    = 10000;
+
+            // Traverse the blockchain to find events and bets.
+            while (BlocksIndex) {
+
+                CBlock block;
+                ReadBlockFromDisk(block, BlocksIndex);
+
+                BOOST_FOREACH(CTransaction &tx, block.vtx) {
+
+                    // Check all TX vouts for an OP RETURN.
+                    for(unsigned int i = 0; i < tx.vout.size(); i++) {
+
+                        const CTxOut &txout = tx.vout[i];
+                        std::string s       = txout.scriptPubKey.ToString();
+                        CAmount betAmount    = txout.nValue;
+
+                        if(s.length() > 0 && 0 == strncmp(s.c_str(), "OP_RETURN", 9)) {
+
+                            // Get the OP CODE from the transaction scriptPubKey.
+                            vector<unsigned char> v = ParseHex(s.substr(9, string::npos));
+                            std::string betDescr(v.begin(), v.end());
+                            std::vector<std::string> strs;
+
+                            // Split the OP CODE on |
+                            boost::split(strs, betDescr, boost::is_any_of("|"));
+
+                            std::string txType = strs[0].c_str();
+
+                            // Event OP RETURN transaction.
+                            if (strs.size() == 11 && txType == "1") {
+                                // Hold event OP CODE data.
+                                std::string pVersion    = strs[1].c_str();
+                                std::string eventId     = strs[2].c_str();
+                                std::string timestamp   = strs[3].c_str();
+                                std::string eventType   = strs[4].c_str();
+                                std::string eventInfo   = strs[5].c_str();
+                                std::string homeTeam    = strs[6].c_str();
+                                std::string awayTeam    = strs[7].c_str();
+                                std::string homeWinOdds = strs[8].c_str();
+                                std::string awayWinOdds = strs[9].c_str();
+                                std::string drawOdds    = strs[10].c_str();
+
+                                CTxDestination address;
+                                ExtractDestination(tx.vout[0].scriptPubKey, address);
+
+                                if (CBitcoinAddress(address).ToString() == "TDxUUn1vbtKGqWswpCzWTExXKnm3Q3SpMu" && pVersion == "1.0") {
+                                    map<std::string, std::string>::iterator it = results.find(eventId);
+                                    if (it == results.end()) {
+                                        continue;
+                                    }
+                                    std::string winner = it->second;
+
+                                    if (winner == homeTeam) {
+                                        vOdds[eventId] = (unsigned int)std::stoi(homeWinOdds);
+                                    } else if (winner == awayTeam) {
+                                        vOdds[eventId] = (unsigned int)std::stoi(awayWinOdds);
+                                    } else {
+                                        vOdds[eventId] = (unsigned int)std::stoi(drawOdds);
+                                    }
+                                    printf("Found event, updated odds: %s -> %d\n", eventId.c_str(), vOdds[eventId]);
+                                }
+                            }
+
+                            // Bet OP RETURN transaction.
+                            if (strs.size() == 4 && txType == "2") {
+                                std::string pVersion = strs[1];
+                                std::string eventId  = strs[2];
+                                std::string result   = strs[3];
+
+                                map<std::string, std::string>::iterator it = results.find(eventId);
+                                if (it == results.end()) {
+                                    continue;
+                                }
+                                std::string winner = it->second;
+
+                                //printf("BET OP CODE - %s \n", betDescr.c_str());
+
+                                //printf("Event id = %s & Bet EventID= %s Winner= %s Winner= %s  \n", results[currResult][0].c_str(), eventId.c_str(), results[currResult][1].c_str(), result.c_str() );
+
+                                map<std::string, unsigned int>::iterator it_ = vOdds.find(eventId);
+                                if (it_ == vOdds.end()) {
+                                    continue;
+                                }
+                                // Is the bet a winning bet?
+                                // Odds for an event are 0 for each transaction that is posted after the result for that
+                                // event and before another event with that ID has been posted.
+                                if (result == winner && it_ != vOdds.end() && it->second != 0) {
+                                    //printf( "Winning Bet!!\n" );
+                                    unsigned int odds = it_->second;
+                                    payout = betAmount * odds / oddsDivisor;
+
+                                    CTxDestination address;
+                                    ExtractDestination(tx.vout[1].scriptPubKey, address);
+
+                                    printf("WINNING PAYOUT :)\n");
+                                    printf("AMOUNT: %li %li %li \n", betAmount, odds, payout);
+                                    printf("ADDRESS: %s \n", CBitcoinAddress( address ).ToString().c_str() );
+
+                                    vexpectedPayouts.emplace_back( payout, GetScriptForDestination(CBitcoinAddress( address ).Get()));
+                                }
+
+                                //for( unsigned ////int l = 0; l < vexpectedPayouts.size(); l++ ){
+                                //printf( "EXPECTED: %s \n", vexpectedPayouts[l].ToString().c_str() );
+                                //}
+                            }
+
+                            // Result OP RETURN transaction.
+                            /*if (strs.size() == 4 || strs[0] == "3") {
+                                std::string pVersion = strs[1];
+                                std::string eventId  = strs[2];
+                                std::string winner   = strs[3];
+
+                                vOdds[eventId] = 0;
+                                printf("Found event result, reset odds: %s -> %d\n", eventId.c_str(), vOdds[eventId]);
+                            }*/
+                        }
+                    }
+                }
+
+                BlocksIndex = chainActive.Next(BlocksIndex);
+            }
+        }
+    }
+    else {
+        LogPrint("masternode", "CBudgetManager::PayoutResults - nSubmittedHeight(=%ld) < nBlockStart(=%ld) condition not fulfilled.\n");
+    }
+
+    //TODO: PASS BACK CORRECT FEES
+    return vexpectedPayouts;
+}
+
 /**
  * Creates the winning bets payout vector.
  *
@@ -257,13 +443,13 @@ std::vector<CTxOut> GetBetPayouts() {
     // Get all the results posted on chain in the last 24 hours.
     std::vector<std::vector<std::string>> results = getEventResults( );
     // Check if the results have already been posted in the last 24 hours (i.e remove results already paid out).
-    results = checkResults(results);
+    //results = checkResults(results);
 
     static int nSubmittedHeight = 0;
     int nCurrentHeight = chainActive.Height();
 
     // Discard all the Bet and Event transactions before nBettingStartBlock.
-    if(nSubmittedHeight < (nCurrentHeight - nBettingStartBlock)) {
+    if(nSubmittedHeight <= (nCurrentHeight - nBettingStartBlock)) {
 
         // Traverse the blockchain for an event to match a result and all the bets on a result.
         for(unsigned int currResult = 0; currResult < results.size(); currResult++) {
@@ -330,22 +516,22 @@ std::vector<CTxOut> GetBetPayouts() {
                                 CTxDestination address;
                                 ExtractDestination(tx.vout[0].scriptPubKey, address);
 
-                                printf("Event OP CODE - %s \n", betDescr.c_str());
+                                //printf("Event OP CODE - %s \n", betDescr.c_str());
 
-                                if (CBitcoinAddress(address).ToString() == "TVASr4bm6Rz19udhUWmSGtrrDExCjQdATp" && pVersion == "1.0") {
+                                if (CBitcoinAddress(address).ToString() == "TDxUUn1vbtKGqWswpCzWTExXKnm3Q3SpMu" && pVersion == "1.0") {
 
                                     // If current event ID matches result ID set the teams and odds.
                                     if (results[currResult][0] == eventId) {
                                         latestHomeTeam = homeTeam;
                                         latestAwayTeam = awayTeam;
 
-                                        printf("HomeTeam = %s & AwayTeam = %s \n", latestHomeTeam.c_str(), latestAwayTeam.c_str());
+                                        //printf("HomeTeam = %s & AwayTeam = %s \n", latestHomeTeam.c_str(), latestAwayTeam.c_str());
 
                                         latestHomeOdds = (unsigned int)std::stoi(homeWinOdds);
                                         latestAwayOdds = (unsigned int)std::stoi(awayWinOdds);
                                         latestDrawOdds = (unsigned int)std::stoi(drawOdds);
 
-                                        printf("latestHomeOdds = %f & latestAwayOdds = %f & latestDrawOdds = %f \n", latestHomeOdds, latestAwayOdds, latestDrawOdds);
+                                        //printf("latestHomeOdds = %u & latestAwayOdds = %u & latestDrawOdds = %u \n", latestHomeOdds, latestAwayOdds, latestDrawOdds);
                                     }
                                 }
                             }
@@ -357,7 +543,7 @@ std::vector<CTxOut> GetBetPayouts() {
                                 std::string eventId  = strs[2];
                                 std::string result   = strs[3];
 
-                                printf("BET OP CODE - %s \n", betDescr.c_str());
+                                //printf("BET OP CODE - %s \n", betDescr.c_str());
 
                                 //printf("Event id = %s & Bet EventID= %s Winner= %s Winner= %s  \n", results[currResult][0].c_str(), eventId.c_str(), results[currResult][1].c_str(), result.c_str() );
 
@@ -379,18 +565,16 @@ std::vector<CTxOut> GetBetPayouts() {
                                     CTxDestination address;
                                     ExtractDestination(tx.vout[1].scriptPubKey, address);
 
-
-
                                     printf("WINNING PAYOUT :)\n");
-                                    printf("WINNING PAYOUT :)  %lli \n", payout);
+                                    printf("AMOUNT: %li \n", payout);
                                     printf("ADDRESS: %s \n", CBitcoinAddress( address ).ToString().c_str() );
 
                                     vexpectedPayouts.emplace_back( payout, GetScriptForDestination(CBitcoinAddress( address ).Get()));
                                 }
 
-                                for( unsigned int l = 0; l < vexpectedPayouts.size(); l++ ){
-                                    printf( "EXPECTED: %s \n", vexpectedPayouts[l].ToString().c_str() );
-                                }
+                                //for( unsigned ////int l = 0; l < vexpectedPayouts.size(); l++ ){
+                                    //printf( "EXPECTED: %s \n", vexpectedPayouts[l].ToString().c_str() );
+                                //}
                             }
                         }
                     }
@@ -719,8 +903,8 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
             }
         }
         else {
+            printf("MINNNER!!!\n");
 
-            std::vector<CTxOut> voutPayouts;
             int triggerBetPayouts = 0;
             if (Params().NetworkID() == CBaseChainParams::MAIN) {
                 // trigger once a day mainnet.
@@ -728,30 +912,36 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
             }
             else {
                 // Trigger every ten blocks testnet.
-                triggerBetPayouts = 10;
+                triggerBetPayouts = 1;
             }
             CAmount nMNBetReward = 0;
 
             // Trigger the bet payout.
-            if( nHeight % triggerBetPayouts == 0 ){
+            //if( nHeight % triggerBetPayouts == 0 ){
 
-                std::vector<CTxOut> voutPayouts = GetBetPayouts();
+                // 1. get result txs
+                // 2. for each result, get evtId, then get go to evt, get odds
+
+            // std::vector<CTxOut> voutPayouts = GetBetPayouts();
+            std::vector<CTxOut> voutPayouts = GetBetPayoutsForTransactions(pblock->vtx);
+            if (voutPayouts.size() > 0) {
                 GetBlockPayouts(voutPayouts, nMNBetReward);
 
-                for( unsigned int l = 0; l < voutPayouts.size(); l++ ){
-                    LogPrintf( "%s - Including bet payment: %s \n", __func__, voutPayouts[l].ToString().c_str() );
+                for (unsigned int l = 0; l < voutPayouts.size(); l++) {
+                    printf("%s - Including bet payment: %s \n", __func__, voutPayouts[l].ToString().c_str());
                 }
 
-                LogPrintf( "%s - MN betting fee payout: %li \n", __func__, nMNBetReward );
+                printf("%s - MN betting fee payout: %li \n", __func__, nMNBetReward);
+                //}
+
+                // Fill coin stake transaction.
+                pwallet->FillCoinStake(txCoinStake, nMNBetReward, voutPayouts); // Kokary: add betting fee
+
+                //Sign with updated tx
+                pwallet->SignCoinStake(txCoinStake, vwtxPrev);
+                pblock->vtx[1] = CTransaction(txCoinStake);
+                printf("ALL BETS PAID!\n\n\n\n\n");
             }
-
-            // Fill coin stake transaction.
-            pwallet->FillCoinStake(txCoinStake, nMNBetReward, voutPayouts); // Kokary: add betting fee
-
-            //Sign with updated tx
-            pwallet->SignCoinStake(txCoinStake, vwtxPrev);
-            pblock->vtx[1] = CTransaction(txCoinStake);
-            printf("ALL BETS PAID!");
         }
 
         nLastBlockTx = nBlockTx;
