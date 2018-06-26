@@ -3257,26 +3257,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         nExpectedMint += nFees;
 
     // Search the block for any results and payout any winning bets for that result.
-    //std::vector<CTxOut> vexpectedPayouts = GetBetPayoutsForTransactions(block.vtx)
-    // if (vexpectedPayouts.size() > 0) {
+    std::vector<CTxOut> vexpectedPayouts = GetBetPayoutsForTransactions(block.vtx);
+    if (vexpectedPayouts.size() > 0) {
 
-
-    std::vector<CTxOut> voutPayouts;
-    int triggerBetPayouts = 0;
-
-    if (Params().NetworkID() == CBaseChainParams::MAIN) {
-        // trigger once a day mainnet.
-        triggerBetPayouts = 1440;
-    }
-    else{
-        triggerBetPayouts = 1;
-    }
-
-
-    if( pindex->nHeight % triggerBetPayouts == 0 ){
-
-       // nExpectedMint += GetBlockPayouts(vexpectedPayouts, nMNBetReward);
-        std::vector<CTxOut> vexpectedPayouts = GetBetPayouts();
         nExpectedMint += GetBlockPayouts(vexpectedPayouts, nMNBetReward);
         nExpectedMint += nMNBetReward;
 

@@ -920,21 +920,8 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
 
             // 1. get result txs
             // 2. for each result, get evtId, then get go to evt, get odds
-            //std::vector<CTxOut> voutPayouts = GetBetPayoutsForTransactions(pblock->vtx);
-
-            std::vector<CTxOut> voutPayouts;
-            int triggerBetPayouts = 0;
-            if (Params().NetworkID() == CBaseChainParams::MAIN) {
-                // trigger once a day mainnet.
-                triggerBetPayouts = 1440;
-            }
-            else{
-                triggerBetPayouts = 1;
-            }
-
-
-            if( nHeight % triggerBetPayouts == 0 ){
-                voutPayouts  = GetBetPayouts();
+            std::vector<CTxOut> voutPayouts = GetBetPayoutsForTransactions(pblock->vtx);
+            if (voutPayouts.size() > 0) {
                 GetBlockPayouts(voutPayouts, nMNBetReward);
 
                 for (unsigned int l = 0; l < voutPayouts.size(); l++) {
