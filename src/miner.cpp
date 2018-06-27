@@ -64,7 +64,7 @@ public:
 uint64_t nLastBlockTx = 0;
 uint64_t nLastBlockSize = 0;
 int64_t nLastCoinStakeSearchInterval = 0;
-int nBettingStartBlock = 33000;
+int nBettingStartBlock = 36000;
 
 // We want to sort transactions by priority and fee rate, so:
 typedef boost::tuple<double, CFeeRate, const CTransaction*> TxPriority;
@@ -105,6 +105,7 @@ void UpdateTime(CBlockHeader* pblock, const CBlockIndex* pindexPrev) {
  */
 std::vector<std::vector<std::string>> getEventResults()
 {
+    std::map<uint256, uint32_t> coreWalletVouts;
     std::vector<std::vector<std::string>> results;
     int nCurrentHeight = chainActive.Height();
     int nSubmittedHeight = 0;
@@ -121,7 +122,7 @@ std::vector<std::vector<std::string>> getEventResults()
             resultsBocksIndex = chainActive[nCurrentHeight - 1440];
         }
         else {
-            resultsBocksIndex = chainActive[nCurrentHeight - 250];
+            resultsBocksIndex = chainActive[nCurrentHeight - 7200];
         }
 
         // Traverse the blockchain to find results.
@@ -131,6 +132,20 @@ std::vector<std::vector<std::string>> getEventResults()
             ReadBlockFromDisk(block, resultsBocksIndex);
 
             BOOST_FOREACH(CTransaction &tx, block.vtx) {
+
+                // Ensure the result has been posted by Oracle wallet.
+                bool match = false;
+                for (unsigned int i = 0; i < tx.vin.size(); i++) {
+                    const CTxIn& txin = tx.vin[i];
+                    COutPoint prevout = txin.prevout;
+
+                    // TODO Investigate whether a transaction can have multiple
+                    // `vout`s to the same address.
+                    if (coreWalletVouts[prevout.hash] == prevout.n) {
+                        match = true;
+                        break;
+                    }
+                }
 
                 for(unsigned int i = 0; i < tx.vout.size(); i++) {
 
@@ -143,7 +158,7 @@ std::vector<std::vector<std::string>> getEventResults()
                     //if (s.length() > 0 && CBitcoinAddress(address).ToString() == "TCQyQ6dm6GKfpeVvHWHzcRAjtKsJ3hX4AJ") {
 
                         // TODO Remove hard-coded values from this block.
-                        if (0 == strncmp(s.c_str(), "OP_RETURN", 9)) {
+                        if ( match && 0 == strncmp(s.c_str(), "OP_RETURN", 9)) {
 
                             // Get OP CODE from transactions.
                             vector<unsigned char> v = ParseHex(s.substr(9, string::npos));
@@ -157,7 +172,7 @@ std::vector<std::vector<std::string>> getEventResults()
                                 break;
                             }
 
-                            // printf("RESULT OP_RETURN -> %s \n", betDescr.c_str());
+                            printf("RESULT OP_RETURN -> %s \n", betDescr.c_str());
 
                             std::vector<string> entry;
 
@@ -208,7 +223,7 @@ std::vector<std::vector<std::string>> checkResults( std::vector<std::vector<std:
                 const CTxOut& txout = tx.vout[i];
                 std::string s = txout.scriptPubKey.ToString();
 
-                //if (s.length() > 0 && CBitcoinAddress(tx.vout[0].ToString()).ToString() == "TCQyQ6dm6GKfpeVvHWHzcRAjtKsJ3hX4AJ") {
+                if (s.length() > 0 && CBitcoinAddress(tx.vout[0].ToString()).ToString() == "TCQyQ6dm6GKfpeVvHWHzcRAjtKsJ3hX4AJ") {
 
                     if (0 == strncmp(s.c_str(), "OP_RETURN", 9)) {
 
@@ -231,7 +246,7 @@ std::vector<std::vector<std::string>> checkResults( std::vector<std::vector<std:
                             }
                         }
                     }
-                //}
+                }
             }
         }
 
@@ -422,9 +437,12 @@ std::vector<CTxOut> GetBetPayoutsForTransactions(std::vector<CTransaction> txs) 
  */
 std::vector<CTxOut> GetBetPayouts() {
 
+    std::map<uint256, uint32_t> coreWalletVouts;
     std::vector<CTxOut> vexpectedPayouts;
     // Get all the results posted on chain in the last 24 hours.
     std::vector<std::vector<std::string>> results = getEventResults( );
+    printf( "Results found: %i", results.size() );
+
     // Check if the results have already been posted in the last 24 hours (i.e remove results already paid out).
     //results = checkResults(results);
 
@@ -452,7 +470,7 @@ std::vector<CTxOut> GetBetPayouts() {
             unsigned int latestHomeOdds = 0;
             unsigned int latestAwayOdds = 0;
             unsigned int latestDrawOdds = 0;
-            time_t eventStart           = std::time(0);
+            time_t eventStart           = 0;
 
             std::string latestHomeTeam;
             std::string latestAwayTeam;
@@ -466,6 +484,20 @@ std::vector<CTxOut> GetBetPayouts() {
 
                 BOOST_FOREACH(CTransaction &tx, block.vtx) {
 
+                    // Ensure the result has been posted by Oracle wallet.
+                    bool match = false;
+                    for (unsigned int i = 0; i < tx.vin.size(); i++) {
+                        const CTxIn& txin = tx.vin[i];
+                        COutPoint prevout = txin.prevout;
+
+                        // TODO Investigate whether a transaction can have multiple
+                        // `vout`s to the same address.
+                        if (coreWalletVouts[prevout.hash] == prevout.n) {
+                            match = true;
+                            break;
+                        }
+                    }
+
                     // Check all TX vouts for an OP RETURN.
                     for(unsigned int i = 0; i < tx.vout.size(); i++) {
 
@@ -473,7 +505,7 @@ std::vector<CTxOut> GetBetPayouts() {
                         std::string s       = txout.scriptPubKey.ToString();
                         CAmount betAmount    = txout.nValue;
 
-                        if(s.length() > 0 && 0 == strncmp(s.c_str(), "OP_RETURN", 9)) {
+                        if(match && s.length() > 0 && 0 == strncmp(s.c_str(), "OP_RETURN", 9)) {
 
                             // Get the OP CODE from the transaction scriptPubKey.
                             vector<unsigned char> v = ParseHex(s.substr(9, string::npos));
@@ -517,7 +549,7 @@ std::vector<CTxOut> GetBetPayouts() {
                                         latestHomeOdds = (unsigned int)std::stoi(homeWinOdds);
                                         latestAwayOdds = (unsigned int)std::stoi(awayWinOdds);
                                         latestDrawOdds = (unsigned int)std::stoi(drawOdds);
-                                        eventStart = (time_t) std::strtol(strs[3].c_str(), nullptr, 10);
+                                        eventStart     = (time_t) std::strtol(strs[3].c_str(), nullptr, 10);
 
                                         //printf("latestHomeOdds = %u & latestAwayOdds = %u & latestDrawOdds = %u \n", latestHomeOdds, latestAwayOdds, latestDrawOdds);
                                     }
