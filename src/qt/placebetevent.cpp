@@ -206,7 +206,7 @@ void PlaceBetEvent::on_pushButtonPlaceDrawBet_clicked()
 {
 printf("PlaceBetEvent::on_pushButtonPlaceDrawBet_clicked: about to print\n");
 printf("PlaceBetEvent::on_pushButtonPlaceDrawBet_clicked: %s %s\n", event->id.c_str(), event->drawOdds.c_str());
-    emit currentEventChanged(event, "DRAW", event->drawOdds);
+    emit currentEventChanged(event, "DRW", event->drawOdds);
 }
 
 void PlaceBetEvent::on_addressBookButton_clicked()

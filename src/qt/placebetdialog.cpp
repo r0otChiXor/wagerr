@@ -417,7 +417,7 @@ void PlaceBetDialog::prepareBet(CEvent* event, const std::string& teamToWin, con
     std::map<std::string, std::string>::iterator it;
     it = countryNames.find(teamToWin);
     std::string team = teamToWin;
-    if (teamToWin == "DRAW") {
+    if (teamToWin == "DRW") {
         evtDes += "Draw ";
     } else if (it == countryNames.end()) {
         evtDes += teamToWin;
