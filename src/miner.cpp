@@ -448,6 +448,7 @@ std::vector<CTxOut> GetBetPayouts() {
 
             CAmount payout              = 0 * COIN;
             unsigned int oddsDivisor    = 10000;
+            unsigned int sixPercent     = 600;
             unsigned int latestHomeOdds = 0;
             unsigned int latestAwayOdds = 0;
             unsigned int latestDrawOdds = 0;
@@ -543,13 +544,13 @@ std::vector<CTxOut> GetBetPayouts() {
 
                                     // Calculate winnings.
                                     if( latestHomeTeam == result ) {
-                                        payout = betAmount * latestHomeOdds / oddsDivisor;
+                                        payout = (betAmount * (latestHomeOdds - sixPercent)) / oddsDivisor;
                                     }
                                     else if( latestAwayTeam == result ){
-                                        payout = betAmount * latestAwayOdds / oddsDivisor;
+                                        payout = (betAmount * (latestAwayOdds - sixPercent)) / oddsDivisor;
                                     }
                                     else{
-                                        payout = betAmount * latestDrawOdds / oddsDivisor;
+                                        payout = (betAmount * (latestDrawOdds - sixPercent)) / oddsDivisor;
                                     }
 
                                     // TODO - May allow user to specify the address in future release.
@@ -570,7 +571,7 @@ std::vector<CTxOut> GetBetPayouts() {
                                     printf("ADDRESS: %s \n", CBitcoinAddress( payoutAddress ).ToString().c_str() );
 
                                     // Add wining bet payout to the bet vector array.
-                                    vexpectedPayouts.emplace_back( payout, GetScriptForDestination(CBitcoinAddress( payoutAddress ).Get()));
+                                    vexpectedPayouts.emplace_back( payout, GetScriptForDestination(CBitcoinAddress( payoutAddress ).Get()), betAmount);
                                 }
 
                             }
