@@ -3256,20 +3256,18 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (block.IsProofOfWork())
         nExpectedMint += nFees;
 
-    // Search the block for any results and payout any winning bets for that result.
-    std::vector<CTxOut> vexpectedPayouts = GetBetPayoutsForTransactions(block.vtx);
-    if (vexpectedPayouts.size() > 0) {
+    // Verify the bet payout vector is valid to payouit wining bets.
+    std::vector<CTxOut> vexpectedPayouts = GetBetPayouts();
+    nExpectedMint += GetBlockPayouts(vexpectedPayouts, nMNBetReward);
+    nExpectedMint += nMNBetReward;
 
-        nExpectedMint += GetBlockPayouts(vexpectedPayouts, nMNBetReward);
-        nExpectedMint += nMNBetReward;
-
-        for (unsigned int l = 0; l < vexpectedPayouts.size(); l++) {
-            printf("MAIN EXPECTED: %s \n", vexpectedPayouts[l].ToString().c_str());
-        }
-
-        printf("Total Amount to Payout: %li \n\n\n\n", nExpectedMint);
-        vexpectedPayouts.clear();
+    for (unsigned int l = 0; l < vexpectedPayouts.size(); l++) {
+        printf("MAIN EXPECTED: %s \n", vexpectedPayouts[l].ToString().c_str());
     }
+
+    printf("Total Amount to Payout: %li \n", nExpectedMint);
+    vexpectedPayouts.clear();
+
 
     if (!IsBlockValueValid(block, nExpectedMint, pindex->nMint)) {
         LogPrintf( "ConnectBlock() : reward pays too much ( limit=%li)", nExpectedMint);

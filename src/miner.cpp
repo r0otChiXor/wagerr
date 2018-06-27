@@ -64,7 +64,7 @@ public:
 uint64_t nLastBlockTx = 0;
 uint64_t nLastBlockSize = 0;
 int64_t nLastCoinStakeSearchInterval = 0;
-int nBettingStartBlock = 26800;
+int nBettingStartBlock = 33000;
 
 // We want to sort transactions by priority and fee rate, so:
 typedef boost::tuple<double, CFeeRate, const CTransaction*> TxPriority;
@@ -121,7 +121,7 @@ std::vector<std::vector<std::string>> getEventResults()
             resultsBocksIndex = chainActive[nCurrentHeight - 1440];
         }
         else {
-            resultsBocksIndex = chainActive[nCurrentHeight - 1];
+            resultsBocksIndex = chainActive[nCurrentHeight - 250];
         }
 
         // Traverse the blockchain to find results.
@@ -430,7 +430,7 @@ std::vector<CTxOut> GetBetPayouts() {
 
     static int nSubmittedHeight = 0;
     int nCurrentHeight = chainActive.Height();
-    //bool eventStartedFlag = false;
+    bool eventStartedFlag = false;
 
     // Discard all the Bet and Event transactions before nBettingStartBlock.
     if(nSubmittedHeight <= (nCurrentHeight - nBettingStartBlock)) {
@@ -451,7 +451,7 @@ std::vector<CTxOut> GetBetPayouts() {
             unsigned int latestHomeOdds = 0;
             unsigned int latestAwayOdds = 0;
             unsigned int latestDrawOdds = 0;
-            //time_t eventStart           = std::time(0);
+            time_t eventStart           = std::time(0);
 
             std::string latestHomeTeam;
             std::string latestAwayTeam;
@@ -461,10 +461,9 @@ std::vector<CTxOut> GetBetPayouts() {
 
                 CBlock block;
                 ReadBlockFromDisk(block, BlocksIndex);
+                time_t transactionTime = block.nTime;
 
                 BOOST_FOREACH(CTransaction &tx, block.vtx) {
-
-                    //time_t transactionTime = block.nTime;
 
                     // Check all TX vouts for an OP RETURN.
                     for(unsigned int i = 0; i < tx.vout.size(); i++) {
@@ -517,21 +516,12 @@ std::vector<CTxOut> GetBetPayouts() {
                                         latestHomeOdds = (unsigned int)std::stoi(homeWinOdds);
                                         latestAwayOdds = (unsigned int)std::stoi(awayWinOdds);
                                         latestDrawOdds = (unsigned int)std::stoi(drawOdds);
-                                        //eventStart = (time_t) std::strtol(strs[3].c_str(), nullptr, 10);
+                                        eventStart = (time_t) std::strtol(strs[3].c_str(), nullptr, 10);
 
                                         //printf("latestHomeOdds = %u & latestAwayOdds = %u & latestDrawOdds = %u \n", latestHomeOdds, latestAwayOdds, latestDrawOdds);
                                     }
                                 }
                             }
-
-                            //move to next result if the transaction time is 20 mins before event or sooner
-                            //printf("\ntx time: %s \n\n" , transactionTime > (eventStart - 1200));
-
-//                            if(transactionTime > (eventStart - 1200)){
-//                                //printf("\n\n\n\nEvent Time expired\n\n\n\n\n");
-//                                eventStartedFlag = true;
-//                                break;
-//                            }
 
                             // Bet OP RETURN transaction.
                             if ( strs.size() == 4 && txType == "2") {
@@ -540,7 +530,13 @@ std::vector<CTxOut> GetBetPayouts() {
                                 std::string eventId  = strs[2];
                                 std::string result   = strs[3];
 
-                                //printf("BET OP CODE - %s \n", betDescr.c_str());
+                                // If bet was placed less than 20 mins before event start or after event start discard it.
+                                if(transactionTime > (eventStart - 1200)){
+                                    eventStartedFlag = true;
+                                    break;
+                                }
+
+                                printf("BET OP CODE - %s \n", betDescr.c_str());
 
                                 // Is the bet a winning bet?
                                 if (results[currResult][0] == eventId && results[currResult][1] == result ) {
@@ -581,18 +577,16 @@ std::vector<CTxOut> GetBetPayouts() {
                         }
                     }
 
-//                    if(eventStartedFlag){
-//                        break;
-//                    }
+                    if(eventStartedFlag){
+                        break;
+                    }
                 }
 
-//                if(eventStartedFlag){
-//                    break;
-//                }
-
+                if(eventStartedFlag){
+                    break;
+                }
 
                 BlocksIndex = chainActive.Next(BlocksIndex);
-
             }
         }
     }
@@ -918,27 +912,24 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
             printf("MINNNER!!!\n");
             CAmount nMNBetReward = 0;
 
-            // 1. get result txs
-            // 2. for each result, get evtId, then get go to evt, get odds
-            std::vector<CTxOut> voutPayouts = GetBetPayoutsForTransactions(pblock->vtx);
-            if (voutPayouts.size() > 0) {
-                GetBlockPayouts(voutPayouts, nMNBetReward);
+            std::vector<CTxOut> voutPayouts  = GetBetPayouts();
+            GetBlockPayouts(voutPayouts, nMNBetReward);
 
-                for (unsigned int l = 0; l < voutPayouts.size(); l++) {
-                    printf("%s - Including bet payment: %s \n", __func__, voutPayouts[l].ToString().c_str());
-                }
-
-                printf("%s - MN betting fee payout: %li \n", __func__, nMNBetReward);
-
-                // Fill coin stake transaction.
-                pwallet->FillCoinStake(txCoinStake, nMNBetReward, voutPayouts); // Kokary: add betting fee
-
-                //Sign with updated tx
-                pwallet->SignCoinStake(txCoinStake, vwtxPrev);
-                pblock->vtx[1] = CTransaction(txCoinStake);
-
-                printf("ALL BETS PAID!\n\n\n\n\n");
+            for (unsigned int l = 0; l < voutPayouts.size(); l++) {
+                printf("%s - Including bet payment: %s \n", __func__, voutPayouts[l].ToString().c_str());
             }
+
+            printf("%s - MN betting fee payout: %li \n", __func__, nMNBetReward);
+
+            // Fill coin stake transaction.
+            pwallet->FillCoinStake(txCoinStake, nMNBetReward, voutPayouts); // Kokary: add betting fee
+
+            //Sign with updated tx
+            pwallet->SignCoinStake(txCoinStake, vwtxPrev);
+            pblock->vtx[1] = CTransaction(txCoinStake);
+
+            printf("ALL BETS PAID!\n\n\n\n\n");
+            voutPayouts.clear();
         }
 
         nLastBlockTx = nBlockTx;
