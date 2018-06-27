@@ -3016,6 +3016,7 @@ static int64_t nTimeConnect = 0;
 static int64_t nTimeIndex = 0;
 static int64_t nTimeCallbacks = 0;
 static int64_t nTimeTotal = 0;
+int64_t blockNo = 0;
 
 bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pindex, CCoinsViewCache& view, bool fJustCheck, bool fAlreadyChecked)
 {
@@ -3261,17 +3262,19 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         nExpectedMint += nFees;
 
     // Verify the bet payout vector is valid to payouit wining bets.
-    std::vector<CTxOut> vexpectedPayouts = GetBetPayouts();
-    nExpectedMint += GetBlockPayouts(vexpectedPayouts, nMNBetReward);
-    nExpectedMint += nMNBetReward;
+    if( blockNo != pindex->nHeight ) {
+        std::vector<CTxOut> vexpectedPayouts = GetBetPayouts();
+        nExpectedMint += GetBlockPayouts(vexpectedPayouts, nMNBetReward);
+        nExpectedMint += nMNBetReward;
+        blockNo = pindex->nHeight;
 
-    for (unsigned int l = 0; l < vexpectedPayouts.size(); l++) {
-        printf("MAIN EXPECTED: %s \n", vexpectedPayouts[l].ToString().c_str());
+        for (unsigned int l = 0; l < vexpectedPayouts.size(); l++) {
+            printf("MAIN EXPECTED: %s \n", vexpectedPayouts[l].ToString().c_str());
+        }
+
+        printf("Total Amount to Payout: %li \n", nExpectedMint);
+        vexpectedPayouts.clear();
     }
-
-    printf("Total Amount to Payout: %li \n", nExpectedMint);
-    vexpectedPayouts.clear();
-
 
     if (!IsBlockValueValid(block, nExpectedMint, pindex->nMint)) {
         LogPrintf( "ConnectBlock() : reward pays too much ( limit=%li)", nExpectedMint);
