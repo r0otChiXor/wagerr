@@ -2169,14 +2169,34 @@ int64_t GetBlockPayouts( std::vector<CTxOut>& vexpectedPayouts, CAmount& nMNBetR
 
     CAmount nPayout = 0;
     CAmount totalAmountBet = 0;
+    std::string devPayoutWallet;
+
     for(unsigned i = 0; i < vexpectedPayouts.size(); i++){
-        nPayout += vexpectedPayouts[i].nValue;
         totalAmountBet += vexpectedPayouts[i].nBetValue;
+        nPayout += vexpectedPayouts[i].nValue;
     }
 
-    //printf("AMOUNT: %li \n", totalAmountBet);
-    //printf("AMOUNT: %li \n", nPayout);
-    nMNBetReward = totalAmountBet/94*3; // Betting payouts are 94% of betting amount. 3% of the betting amount is MN fee.
+    //build dev payout fee
+    if (Params().NetworkID() == CBaseChainParams::MAIN) {
+        devPayoutWallet = "Wm5om9hBJTyKqv5FkMSfZ2FDMeGp12fkTe";
+    }
+    else {
+        devPayoutWallet = "TLceyDrdPLBu8DK6UZjKu4vCDUQBGPybcY";
+    }
+
+    if(vexpectedPayouts.size() > 0){
+        CAmount devPayout = totalAmountBet * 0.006;
+        vexpectedPayouts.emplace_back(devPayout, GetScriptForDestination(CBitcoinAddress( devPayoutWallet ).Get()));
+
+        nPayout += devPayout;
+    }
+
+    // Betting payouts are 94% of betting amount. 
+    // 2.4% of the betting amount is MN fee. 
+    // 0.6% dev fund. 3% never created/burned.
+    nMNBetReward = totalAmountBet * 0.024; 
+
+    //printf("Masternode bet reward %i \n", nMNBetReward);
 
     return  nPayout;
 }
@@ -3263,20 +3283,21 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     // Verify the bet payout vector is valid to payouit wining bets.
     if( blockNo != pindex->nHeight ) {
+        //printf("nExpected Mint Before: %li \n", nExpectedMint);
         std::vector<CTxOut> vexpectedPayouts = GetBetPayouts();
         nExpectedMint += GetBlockPayouts(vexpectedPayouts, nMNBetReward);
         nExpectedMint += nMNBetReward;
         blockNo = pindex->nHeight;
 
-        for (unsigned int l = 0; l < vexpectedPayouts.size(); l++) {
-            printf("MAIN EXPECTED: %s \n", vexpectedPayouts[l].ToString().c_str());
-        }
+        // for (unsigned int l = 0; l < vexpectedPayouts.size(); l++) {
+        //     printf("MAIN EXPECTED: %s \n", vexpectedPayouts[l].ToString().c_str());
+        // }
 
         printf("Total Amount to Payout: %li \n", nExpectedMint);
         vexpectedPayouts.clear();
     }
 
-    if (!IsBlockValueValid(block, nExpectedMint, pindex->nMint)) {
+    if (pindex->nHeight > 39000 && !IsBlockValueValid(block, nExpectedMint, pindex->nMint)) {
         LogPrintf( "ConnectBlock() : reward pays too much ( limit=%li)", nExpectedMint);
 
         return state.DoS(100,

@@ -610,7 +610,7 @@ UniValue placebet(const UniValue& params, bool fHelp)
             HelpRequiringPassphrase() +
             "\nArguments:\n"
             "1. \"event-id\"    (string, required) The event to bet on (Must be 4 characters in length e.g. \"#000\").\n"
-            "2. \"team\"        (string, required) The team to win.(Must be 3 character team abbreviation e.g \"RUS\" or \"DRW\" )\n"
+            "2. \"team\"        (string, required) The team to win.(Must be 3 character team abbreviation e.g for Russia: \"RUS\". Or for a draw: \"DRW\" ) \n"
             "3. \"amount\"      (numeric, required) The amount in wgr to send. eg 0.1\n"
             "3. \"comment\"     (string, optional) A comment used to store what the transaction is for. \n"
             "                             This is not part of the transaction, just kept in your wallet.\n"

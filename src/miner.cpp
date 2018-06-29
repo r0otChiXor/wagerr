@@ -114,7 +114,7 @@ std::vector<std::vector<std::string>> getEventResults()
     printf("BET PAYOUT BLOCK: %i \n", nCurrentHeight);
 
     // Discard all the result transactions before a given block.
-    if (nSubmittedHeight <= (nCurrentHeight - nBettingStartBlock)) {
+    if (CBaseChainParams::MAIN || CBaseChainParams::TESTNET && nSubmittedHeight <= (nCurrentHeight - nBettingStartBlock)) {
 
         // Calculate how far back the chain we want to go looking for results.
         CBlockIndex *resultsBocksIndex = NULL;
@@ -122,7 +122,7 @@ std::vector<std::vector<std::string>> getEventResults()
             resultsBocksIndex = chainActive[nCurrentHeight - 1440];
         }
         else {
-            resultsBocksIndex = chainActive[nCurrentHeight - 7200];
+            resultsBocksIndex = chainActive[nCurrentHeight - 720];
         }
 
         // Traverse the blockchain to find results.
@@ -172,7 +172,7 @@ std::vector<std::vector<std::string>> getEventResults()
                                 break;
                             }
 
-                            printf("RESULT OP_RETURN -> %s \n", betDescr.c_str());
+                            //printf("RESULT OP_RETURN -> %s \n", betDescr.c_str());
 
                             std::vector<string> entry;
 
@@ -441,14 +441,13 @@ std::vector<CTxOut> GetBetPayouts() {
     std::vector<CTxOut> vexpectedPayouts;
     // Get all the results posted on chain in the last 24 hours.
     std::vector<std::vector<std::string>> results = getEventResults( );
-    printf( "Results found: %i", results.size() );
+    printf( "Results found: %i \n", results.size() );
 
     // Check if the results have already been posted in the last 24 hours (i.e remove results already paid out).
     //results = checkResults(results);
 
     static int nSubmittedHeight = 0;
     int nCurrentHeight = chainActive.Height();
-    bool eventStartedFlag = false;
 
     // Discard all the Bet and Event transactions before nBettingStartBlock.
     if(nSubmittedHeight <= (nCurrentHeight - nBettingStartBlock)) {
@@ -461,7 +460,7 @@ std::vector<CTxOut> GetBetPayouts() {
                 BlocksIndex = chainActive[nCurrentHeight - 129600];
             }
             else {
-                BlocksIndex = chainActive[nCurrentHeight - 7200];
+                BlocksIndex = chainActive[nCurrentHeight - 720];
             }
 
             CAmount payout              = 0 * COIN;
@@ -471,6 +470,7 @@ std::vector<CTxOut> GetBetPayouts() {
             unsigned int latestAwayOdds = 0;
             unsigned int latestDrawOdds = 0;
             time_t eventStart           = 0;
+            bool eventStartedFlag = false;
 
             std::string latestHomeTeam;
             std::string latestAwayTeam;
@@ -505,7 +505,7 @@ std::vector<CTxOut> GetBetPayouts() {
                         std::string s       = txout.scriptPubKey.ToString();
                         CAmount betAmount    = txout.nValue;
 
-                        if(match && s.length() > 0 && 0 == strncmp(s.c_str(), "OP_RETURN", 9)) {
+                        if(s.length() > 0 && 0 == strncmp(s.c_str(), "OP_RETURN", 9)) {
 
                             // Get the OP CODE from the transaction scriptPubKey.
                             vector<unsigned char> v = ParseHex(s.substr(9, string::npos));
@@ -518,7 +518,7 @@ std::vector<CTxOut> GetBetPayouts() {
                             std::string txType = strs[0].c_str();
 
                             // Event OP RETURN transaction.
-                            if (strs.size() == 11 && txType == "1" ) {
+                            if(match && strs.size() == 11 && txType == "1" ) {
 
                                 // Hold event OP CODE data.
                                 std::string pVersion    = strs[1].c_str();
@@ -564,12 +564,12 @@ std::vector<CTxOut> GetBetPayouts() {
                                 std::string result   = strs[3];
 
                                 // If bet was placed less than 20 mins before event start or after event start discard it.
-                                if(transactionTime > (eventStart - 1200)){
-                                    eventStartedFlag = true;
-                                    break;
+                                if(eventStart > 0 && transactionTime > (eventStart - 1200)){
+                                     eventStartedFlag = true;
+                                     break;
                                 }
 
-                                printf("BET OP CODE - %s \n", betDescr.c_str());
+                                //printf("BET OP CODE - %s \n", betDescr.c_str());
 
                                 // Is the bet a winning bet?
                                 if (results[currResult][0] == eventId && results[currResult][1] == result ) {
@@ -598,9 +598,9 @@ std::vector<CTxOut> GetBetPayouts() {
                                         }
                                     }
 
-                                    printf("WINNING PAYOUT :)\n");
-                                    printf("AMOUNT: %li \n", payout);
-                                    printf("ADDRESS: %s \n", CBitcoinAddress( payoutAddress ).ToString().c_str() );
+                                    //printf("WINNING PAYOUT :)\n");
+                                    //printf("AMOUNT: %li \n", payout);
+                                    //printf("ADDRESS: %s \n", CBitcoinAddress( payoutAddress ).ToString().c_str() );
 
                                     // Add wining bet payout to the bet vector array.
                                     vexpectedPayouts.emplace_back( payout, GetScriptForDestination(CBitcoinAddress( payoutAddress ).Get()), betAmount);
@@ -610,13 +610,13 @@ std::vector<CTxOut> GetBetPayouts() {
                         }
                     }
 
-                    if(eventStartedFlag){
-                        break;
+                    if(eventStartedFlag == true){
+                         break;
                     }
                 }
 
-                if(eventStartedFlag){
-                    break;
+                if(eventStartedFlag == true){
+                     break;
                 }
 
                 BlocksIndex = chainActive.Next(BlocksIndex);
@@ -628,6 +628,7 @@ std::vector<CTxOut> GetBetPayouts() {
     }
 
     //TODO: PASS BACK CORRECT FEES
+    printf("VExpectedPayouts Size: %i \n", vexpectedPayouts.size());
     return vexpectedPayouts;
 }
 
