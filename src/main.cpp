@@ -3281,29 +3281,35 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (block.IsProofOfWork())
         nExpectedMint += nFees;
 
+    time_t currentTime = time(0);
     // Verify the bet payout vector is valid to payouit wining bets.
-    if( blockNo != pindex->nHeight ) {
-        //printf("nExpected Mint Before: %li \n", nExpectedMint);
-        std::vector<CTxOut> vexpectedPayouts = GetBetPayouts();
-        nExpectedMint += GetBlockPayouts(vexpectedPayouts, nMNBetReward);
-        nExpectedMint += nMNBetReward;
-        blockNo = pindex->nHeight;
+    if( CBaseChainParams::TESTNET && pindex->GetBlockTime()  > (currentTime - 600) || CBaseChainParams::MAIN) {
+        
+        //printf("Block Time: %li \n", mapBlockIndex[pcoinsTip->GetBestBlock()]->GetBlockTime);
 
-        // for (unsigned int l = 0; l < vexpectedPayouts.size(); l++) {
-        //     printf("MAIN EXPECTED: %s \n", vexpectedPayouts[l].ToString().c_str());
-        // }
+        if( blockNo != pindex->nHeight ) {
+            //printf("nExpected Mint Before: %li \n", nExpectedMint);
+            std::vector<CTxOut> vexpectedPayouts = GetBetPayouts();
+            nExpectedMint += GetBlockPayouts(vexpectedPayouts, nMNBetReward);
+            nExpectedMint += nMNBetReward;
+            blockNo = pindex->nHeight;
 
-        printf("Total Amount to Payout: %li \n", nExpectedMint);
-        vexpectedPayouts.clear();
-    }
+            // for (unsigned int l = 0; l < vexpectedPayouts.size(); l++) {
+            //     printf("MAIN EXPECTED: %s \n", vexpectedPayouts[l].ToString().c_str());
+            // }
 
-    if (pindex->nHeight > 39000 && !IsBlockValueValid(block, nExpectedMint, pindex->nMint)) {
+            printf("Total Amount to Payout: %li \n", nExpectedMint);
+            vexpectedPayouts.clear();
+        }
+
+    if (!IsBlockValueValid(block, nExpectedMint, pindex->nMint)) {
         LogPrintf( "ConnectBlock() : reward pays too much ( limit=%li)", nExpectedMint);
 
         return state.DoS(100,
             error("ConnectBlock() : reward pays too much (actual=%s vs limit=%s)", FormatMoney(pindex->nMint), FormatMoney(nExpectedMint)),
             REJECT_INVALID, "bad-cb-amount");
         }
+    }
 
     // zerocoin accumulator: if a new accumulator checkpoint was generated, check that it is the correct value
     if (!fVerifyingBlocks && pindex->nHeight >= Params().Zerocoin_StartHeight() && pindex->nHeight % 10 == 0) {

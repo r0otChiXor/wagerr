@@ -119,10 +119,10 @@ std::vector<std::vector<std::string>> getEventResults()
         // Calculate how far back the chain we want to go looking for results.
         CBlockIndex *resultsBocksIndex = NULL;
         if (Params().NetworkID() == CBaseChainParams::MAIN) {
-            resultsBocksIndex = chainActive[nCurrentHeight - 1440];
+            resultsBocksIndex = chainActive[nCurrentHeight - 1];
         }
         else {
-            resultsBocksIndex = chainActive[nCurrentHeight - 720];
+            resultsBocksIndex = chainActive[nCurrentHeight - 1];
         }
 
         // Traverse the blockchain to find results.
@@ -457,7 +457,7 @@ std::vector<CTxOut> GetBetPayouts() {
 
             CBlockIndex *BlocksIndex = NULL;
             if (Params().NetworkID() == CBaseChainParams::MAIN) {
-                BlocksIndex = chainActive[nCurrentHeight - 129600];
+                BlocksIndex = chainActive[nCurrentHeight - 43200];
             }
             else {
                 BlocksIndex = chainActive[nCurrentHeight - 720];

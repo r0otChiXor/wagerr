@@ -382,6 +382,7 @@ void WalletView::gotoPlaceBetPage(QString addr)
             bool match = false;
             for (unsigned int i = 0; i < tx.vin.size(); i++) {
                 const CTxIn& txin = tx.vin[i];
+                //printf("VIn: %s",tx.vin[i].ToString().c_str());
                 COutPoint prevout = txin.prevout;
 
                 // TODO Investigate whether a transaction can have multiple
@@ -397,7 +398,7 @@ void WalletView::gotoPlaceBetPage(QString addr)
                 std::string scriptPubKey = txout.scriptPubKey.ToString();
 
                 // TODO Remove hard-coded values from this block.
-                if (match && scriptPubKey.length() > 0 && strncmp(scriptPubKey.c_str(), "OP_RETURN", 9) == 0) {
+                if ( scriptPubKey.length() > 0 && strncmp(scriptPubKey.c_str(), "OP_RETURN", 9) == 0) {
                     vector<unsigned char> v = ParseHex(scriptPubKey.substr(9, string::npos));
                     std::string evtDescr(v.begin(), v.end());
                     std::vector<std::string> strs;
@@ -429,7 +430,7 @@ void WalletView::gotoPlaceBetPage(QString addr)
 
                 BOOST_FOREACH (const CTxDestination& addr, addrs) {
                     // TODO Take this wallet address as a configuration value.
-                    if (CBitcoinAddress(addr).ToString() == "TVASr4bm6Rz19udhUWmSGtrrDExCjQdATp") {
+                    if (CBitcoinAddress(addr).ToString() == "TCQyQ6dm6GKfpeVvHWHzcRAjtKsJ3hX4AJ") {
                         coreWalletVouts.insert(make_pair(tx.GetHash(), i));
                     }
                 }
