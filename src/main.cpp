@@ -3283,11 +3283,11 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     time_t currentTime = time(0);
     // Verify the bet payout vector is valid to payouit wining bets.
-    if( CBaseChainParams::TESTNET && pindex->GetBlockTime()  > (currentTime - 600) || CBaseChainParams::MAIN) {
+    if(pindex->nHeight > 39610){ // CBaseChainParams::TESTNET && pindex->GetBlockTime()  > (currentTime - 600) || CBaseChainParams::MAIN) {
         
         //printf("Block Time: %li \n", mapBlockIndex[pcoinsTip->GetBestBlock()]->GetBlockTime);
 
-        if( blockNo != pindex->nHeight ) {
+        //if( blockNo != pindex->nHeight ) {
             //printf("nExpected Mint Before: %li \n", nExpectedMint);
             std::vector<CTxOut> vexpectedPayouts = GetBetPayouts();
             nExpectedMint += GetBlockPayouts(vexpectedPayouts, nMNBetReward);
@@ -3300,7 +3300,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
             printf("Total Amount to Payout: %li \n", nExpectedMint);
             vexpectedPayouts.clear();
-        }
+       // }
 
     if (!IsBlockValueValid(block, nExpectedMint, pindex->nMint)) {
         LogPrintf( "ConnectBlock() : reward pays too much ( limit=%li)", nExpectedMint);
