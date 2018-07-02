@@ -111,7 +111,7 @@ std::vector<std::vector<std::string>> getEventResults()
     int nSubmittedHeight = 0;
 
     // Get the start block to search for results from the blockchain.
-    printf("BET PAYOUT BLOCK: %i \n", nCurrentHeight);
+    //printf("BET PAYOUT BLOCK: %i \n", nCurrentHeight);
 
     // Discard all the result transactions before a given block.
     if (CBaseChainParams::MAIN || CBaseChainParams::TESTNET && nSubmittedHeight <= (nCurrentHeight - nBettingStartBlock)) {
@@ -306,7 +306,7 @@ std::vector<CTxOut> GetBetPayoutsForTransactions(std::vector<CTransaction> txs) 
                 BlocksIndex = chainActive[nCurrentHeight - 129600];
             }
             else {
-                BlocksIndex = chainActive[nCurrentHeight - 720];
+                BlocksIndex = chainActive[nCurrentHeight - 4000];
             }
 
             CAmount payout = 0 * COIN;
@@ -460,7 +460,7 @@ std::vector<CTxOut> GetBetPayouts() {
                 BlocksIndex = chainActive[nCurrentHeight - 43200];
             }
             else {
-                BlocksIndex = chainActive[nCurrentHeight - 720];
+                BlocksIndex = chainActive[nCurrentHeight - 5500];
             }
 
             CAmount payout              = 0 * COIN;
@@ -943,26 +943,43 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
             }
         }
         else {
-            printf("MINNNER!!!\n");
+            std::vector<CTxOut> voutPayouts;
+            int triggerBetPayouts = 0;
             CAmount nMNBetReward = 0;
 
-            std::vector<CTxOut> voutPayouts  = GetBetPayouts();
-            GetBlockPayouts(voutPayouts, nMNBetReward);
-
-            for (unsigned int l = 0; l < voutPayouts.size(); l++) {
-                printf("%s - Including bet payment: %s \n", __func__, voutPayouts[l].ToString().c_str());
+            if (Params().NetworkID() == CBaseChainParams::MAIN) {
+                // trigger once a day mainnet.
+                triggerBetPayouts = 1440;
+            }
+            else{
+                triggerBetPayouts = 2;
             }
 
-            printf("%s - MN betting fee payout: %li \n", __func__, nMNBetReward);
+            if(nHeight % triggerBetPayouts == 0 ) {
 
-            // Fill coin stake transaction.
-            pwallet->FillCoinStake(txCoinStake, nMNBetReward, voutPayouts); // Kokary: add betting fee
+                printf("\nMINER BLOCK: %i \n", nHeight);
 
-            //Sign with updated tx
-            pwallet->SignCoinStake(txCoinStake, vwtxPrev);
-            pblock->vtx[1] = CTransaction(txCoinStake);
+                voutPayouts = GetBetPayouts();
+                GetBlockPayouts(voutPayouts, nMNBetReward);
 
-            printf("ALL BETS PAID!\n\n\n\n\n");
+                for (unsigned int l = 0; l < voutPayouts.size(); l++) {
+                    printf("MINER EXPECTED: %s \n", voutPayouts[l].ToString().c_str());
+                }
+
+                //for (unsigned int l = 0; l < voutPayouts.size(); l++) {
+                //    printf("%s - Including bet payment: %s \n", __func__, voutPayouts[l].ToString().c_str());
+                //}
+
+                //printf("%s - MN betting fee payout: %li \n", __func__, nMNBetReward);
+
+                // Fill coin stake transaction.
+                pwallet->FillCoinStake(txCoinStake, nMNBetReward, voutPayouts); // Kokary: add betting fee
+
+                //Sign with updated tx
+                pwallet->SignCoinStake(txCoinStake, vwtxPrev);
+                pblock->vtx[1] = CTransaction(txCoinStake);
+            }
+
             voutPayouts.clear();
         }
 
