@@ -118,12 +118,7 @@ std::vector<std::vector<std::string>> getEventResults()
 
         // Calculate how far back the chain we want to go looking for results.
         CBlockIndex *resultsBocksIndex = NULL;
-        if (Params().NetworkID() == CBaseChainParams::MAIN) {
-            resultsBocksIndex = chainActive[nCurrentHeight - 1];
-        }
-        else {
-            resultsBocksIndex = chainActive[nCurrentHeight - 1];
-        }
+        resultsBocksIndex = chainActive[nCurrentHeight];
 
         // Traverse the blockchain to find results.
         while (resultsBocksIndex) {
