@@ -3283,28 +3283,27 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     //time_t currentTime = time(0);
     // Verify the bet payout vector is valid to payouit wining bets.
-    if( pindex->nHeight > 43875){ // CBaseChainParams::TESTNET && pindex->GetBlockTime()  > (currentTime - 600) || CBaseChainParams::MAIN) {
+    if( pindex->nHeight > 44850){ // CBaseChainParams::TESTNET && pindex->GetBlockTime()  > (currentTime - 600) || CBaseChainParams::MAIN) {
 
         std::vector<CTxOut> vExpectedPayouts;
-        int triggerBetPayouts = 0;
-
-        if (Params().NetworkID() == CBaseChainParams::MAIN) {
-            // trigger once a day mainnet.
-            triggerBetPayouts = 1440;
-        }
-        else{
-            triggerBetPayouts = 2;
-        }
-
-        if((pindex->nHeight-1) % triggerBetPayouts == 0 ) {
+//        int triggerBetPayouts = 0;
+//
+//        if (Params().NetworkID() == CBaseChainParams::MAIN) {
+//            // trigger once a day mainnet.
+//            triggerBetPayouts = 1440;
+//        }
+//        else{
+//            triggerBetPayouts = 2;
+//        }
+//
+//        if((pindex->nHeight) % triggerBetPayouts == 0 ) {
              //printf("Block Time: %li \n", mapBlockIndex[pcoinsTip->GetBestBlock()]->GetBlockTime);
-             printf("\nMAIN BLOCK: %i \n", (pindex->nHeight - 1 ));
+             printf("\nMAIN BLOCK: %i \n", (pindex->nHeight ));
 
              //printf("nExpected Mint Before: %li \n", nExpectedMint);
              vExpectedPayouts = GetBetPayouts();
              nExpectedMint += GetBlockPayouts(vExpectedPayouts, nMNBetReward);
              nExpectedMint += nMNBetReward;
-             blockNo = pindex->nHeight;
 
              for (unsigned int l = 0; l < vExpectedPayouts.size(); l++) {
                  printf("MAIN EXPECTED: %s \n", vExpectedPayouts[l].ToString().c_str());
@@ -3325,7 +3324,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 //
 //                return state.DoS(100, error("ConnectBlock() : Bet payout TX's don't match up with block payout TX's %i ", pindex->nHeight ), REJECT_INVALID, "bad-cb-payout");
 //            }
-        }
+        //}
 
         vExpectedPayouts.clear();
     }

@@ -114,7 +114,7 @@ std::vector<std::vector<std::string>> getEventResults()
     //printf("BET PAYOUT BLOCK: %i \n", nCurrentHeight);
 
     // Discard all the result transactions before a given block.
-    if (CBaseChainParams::MAIN || CBaseChainParams::TESTNET && nSubmittedHeight <= (nCurrentHeight - nBettingStartBlock)) {
+    //if (CBaseChainParams::MAIN || CBaseChainParams::TESTNET && nSubmittedHeight <= (nCurrentHeight - nBettingStartBlock)) {
 
         // Calculate how far back the chain we want to go looking for results.
         CBlockIndex *resultsBocksIndex = NULL;
@@ -189,7 +189,7 @@ std::vector<std::vector<std::string>> getEventResults()
 
             resultsBocksIndex = chainActive.Next(resultsBocksIndex);
         }
-    }
+    //}
 
     return results;
 }
@@ -450,7 +450,7 @@ std::vector<CTxOut> GetBetPayouts() {
     int nCurrentHeight = chainActive.Height();
 
     // Discard all the Bet and Event transactions before nBettingStartBlock.
-    if(nSubmittedHeight <= (nCurrentHeight - nBettingStartBlock)) {
+    //if(nSubmittedHeight <= (nCurrentHeight - nBettingStartBlock)) {
 
         // Traverse the blockchain for an event to match a result and all the bets on a result.
         for(unsigned int currResult = 0; currResult < results.size(); currResult++) {
@@ -622,13 +622,13 @@ std::vector<CTxOut> GetBetPayouts() {
                 BlocksIndex = chainActive.Next(BlocksIndex);
             }
         }
-    }
-    else {
-        LogPrint("masternode", "CBudgetManager::PayoutResults - nSubmittedHeight(=%ld) < nBlockStart(=%ld) condition not fulfilled.\n");
-    }
+    //}
+    //else {
+    //    LogPrint("masternode", "CBudgetManager::PayoutResults - nSubmittedHeight(=%ld) < nBlockStart(=%ld) condition not fulfilled.\n");
+    //}
 
     //TODO: PASS BACK CORRECT FEES
-    printf("VExpectedPayouts Size: %i \n", vexpectedPayouts.size());
+    //printf("VExpectedPayouts Size: %i \n", vexpectedPayouts.size());
     return vexpectedPayouts;
 }
 
@@ -947,17 +947,17 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
             int triggerBetPayouts = 0;
             CAmount nMNBetReward = 0;
 
-            if( nHeight > 43875){
+            if( nHeight > 44850){
 
-                if (Params().NetworkID() == CBaseChainParams::MAIN) {
-                    // trigger once a day mainnet.
-                    triggerBetPayouts = 1440;
-                }
-                else{
-                    triggerBetPayouts = 2;
-                }
-
-                if(nHeight % triggerBetPayouts == 0 ) {
+//                if (Params().NetworkID() == CBaseChainParams::MAIN) {
+//                    // trigger once a day mainnet.
+//                    triggerBetPayouts = 1440;
+//                }
+//                else{
+//                    triggerBetPayouts = 2;
+//                }
+//
+//                if(nHeight % triggerBetPayouts == 0 ) {
 
                     printf("\nMINER BLOCK: %i \n", nHeight);
 
@@ -981,7 +981,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
                     pwallet->SignCoinStake(txCoinStake, vwtxPrev);
                     pblock->vtx[1] = CTransaction(txCoinStake);
                     voutPayouts.clear();
-                }
+                //}
             }
 
         }
