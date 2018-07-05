@@ -942,7 +942,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
             int triggerBetPayouts = 0;
             CAmount nMNBetReward = 0;
 
-            if( nHeight > 45288){
+            if( nHeight > 47816){
 
 //                if (Params().NetworkID() == CBaseChainParams::MAIN) {
 //                    // trigger once a day mainnet.

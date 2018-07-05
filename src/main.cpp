@@ -3283,7 +3283,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     //time_t currentTime = time(0);
     // Verify the bet payout vector is valid to payouit wining bets.
-    if( pindex->nHeight > 45288){ // CBaseChainParams::TESTNET && pindex->GetBlockTime()  > (currentTime - 600) || CBaseChainParams::MAIN) {
+    if( pindex->nHeight > 47816){ // CBaseChainParams::TESTNET && pindex->GetBlockTime()  > (currentTime - 600) || CBaseChainParams::MAIN) {
 
         std::vector<CTxOut> vExpectedPayouts;
 //        int triggerBetPayouts = 0;
