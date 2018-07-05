@@ -3281,49 +3281,36 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (block.IsProofOfWork())
         nExpectedMint += nFees;
 
-    //time_t currentTime = time(0);
-    // Verify the bet payout vector is valid to payouit wining bets.
-    if( pindex->nHeight > 47816){ // CBaseChainParams::TESTNET && pindex->GetBlockTime()  > (currentTime - 600) || CBaseChainParams::MAIN) {
+    // Calculate the expected bet payouts.
+    // Only look for events, bets and results after a given block on testnet. Full of test data.
+    if( CBaseChainParams::TESTNET && pindex->nHeight > 47960){
 
         std::vector<CTxOut> vExpectedPayouts;
-//        int triggerBetPayouts = 0;
-//
-//        if (Params().NetworkID() == CBaseChainParams::MAIN) {
-//            // trigger once a day mainnet.
-//            triggerBetPayouts = 1440;
-//        }
-//        else{
-//            triggerBetPayouts = 2;
-//        }
-//
-//        if((pindex->nHeight) % triggerBetPayouts == 0 ) {
-             //printf("Block Time: %li \n", mapBlockIndex[pcoinsTip->GetBestBlock()]->GetBlockTime);
-             printf("\nMAIN BLOCK: %i \n", (pindex->nHeight ));
 
-             //printf("nExpected Mint Before: %li \n", nExpectedMint);
-             vExpectedPayouts = GetBetPayouts();
-             nExpectedMint += GetBlockPayouts(vExpectedPayouts, nMNBetReward);
-             nExpectedMint += nMNBetReward;
+        printf("\nMAIN BLOCK: %i \n", (pindex->nHeight ));
 
-             for (unsigned int l = 0; l < vExpectedPayouts.size(); l++) {
-                 printf("MAIN EXPECTED: %s \n", vExpectedPayouts[l].ToString().c_str());
-             }
+        vExpectedPayouts = GetBetPayouts();
+        nExpectedMint += GetBlockPayouts(vExpectedPayouts, nMNBetReward);
+        nExpectedMint += nMNBetReward;
 
-             if (!IsBlockValueValid(block, nExpectedMint, pindex->nMint)) {
-                 printf("ConnectBlock() : reward pays too much ( limit=%li)", nExpectedMint);
+        for (unsigned int l = 0; l < vExpectedPayouts.size(); l++) {
+            printf("MAIN EXPECTED: %s \n", vExpectedPayouts[l].ToString().c_str());
+        }
 
-                 return state.DoS(100,
-                                 error("ConnectBlock() : reward pays too much (actual=%s vs limit=%s)",
-                                       FormatMoney(pindex->nMint), FormatMoney(nExpectedMint)),
-                                 REJECT_INVALID, "bad-cb-amount");
-            }
+        // Validate bet payouts nExpectedMint against the block pindex->nMint to ensure connect block wont pay to much.
+        if (!IsBlockValueValid(block, nExpectedMint, pindex->nMint)) {
+            return state.DoS(100,
+                     error("ConnectBlock() : reward pays too much (actual=%s vs limit=%s)",
+                           FormatMoney(pindex->nMint), FormatMoney(nExpectedMint)),
+                     REJECT_INVALID, "bad-cb-amount");
+        }
 
-            // Validate the payout vector against the block being submitted.
-//            if (!IsBlockPayoutsValid(vExpectedPayouts, block)) {
-//                printf("Betting payout tx's did not match the payout tx's in the block. \n");
-//
-//                return state.DoS(100, error("ConnectBlock() : Bet payout TX's don't match up with block payout TX's %i ", pindex->nHeight ), REJECT_INVALID, "bad-cb-payout");
-//            }
+        // Validate the payout vector against the block being submitted.
+        //if (!IsBlockPayoutsValid(vExpectedPayouts, block)) {
+        //        printf("Betting payout tx's did not match the payout tx's in the block. \n");
+        //
+        //        return state.DoS(100, error("ConnectBlock() : Bet payout TX's don't match up with block payout TX's %i ", pindex->nHeight ), REJECT_INVALID, "bad-cb-payout");
+        //    }
         //}
 
         vExpectedPayouts.clear();

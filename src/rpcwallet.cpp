@@ -77,98 +77,110 @@ UniValue listevents(const UniValue& params, bool fHelp)
     // to reduce the processing time for this command.
     CBlockIndex* pindex = chainActive.Genesis();
     bool skipping = true;
+
     while (pindex) {
-        CBlock block;
-        ReadBlockFromDisk(block, pindex);
-        BOOST_FOREACH (CTransaction& tx, block.vtx) {
-            // This is an early optimisation: we know that no events were posted
-            // before the following transaction, so we skip them.
-            if (skipping) {
-                if (tx.GetHash().ToString() != "948965410fc242a3d7b0cf562d100425efb2180696ad6bd3ac06b5d5679d07f9") {
-                    continue;
-                }
-                skipping = false;
-            }
 
-            bool match = false;
-            for (unsigned int i = 0; i < tx.vin.size(); i++) {
-                const CTxIn& txin = tx.vin[i];
+        //if( pindex->nHeight > 46000 ) {
+
+            CBlock block;
+            ReadBlockFromDisk(block, pindex);
+
+            BOOST_FOREACH(CTransaction& tx, block.vtx) {
+
+                uint256 txHash = tx.GetHash();
+
+                // This is an early optimisation: we know that no events were posted
+                // before the following transaction, so we skip them.
+                if (skipping && CBaseChainParams::TESTNET) {
+                    if (tx.GetHash().ToString() != "948965410fc242a3d7b0cf562d100425efb2180696ad6bd3ac06b5d5679d07f9") {
+                        continue;
+                    }
+                    skipping = false;
+                }
+
+                // Ensure the event TX has come from Oracle wallet by looking at the vins.
+                const CTxIn &txin = tx.vin[0];
                 COutPoint prevout = txin.prevout;
+                bool match        = false;
 
-                // TODO Investigate whether a transaction can have multiple
-                // `vout`s to the same address.
-                if (coreWalletVouts[prevout.hash] == prevout.n) {
-                    match = true;
-                    break;
-                }
-            }
+                uint256 hashBlock;
+                CTransaction txPrev;
+                if (GetTransaction(prevout.hash, txPrev, hashBlock, true)) {
 
-            for (unsigned int i = 0; i < tx.vout.size(); i++) {
-                const CTxOut& txout = tx.vout[i];
-                std::string scriptPubKey = txout.scriptPubKey.ToString();
+                    const CTxOut &txout = txPrev.vout[0];
+                    std::string scriptPubKey = txout.scriptPubKey.ToString();
 
-                // TODO Remove hard-coded values from this block.
-                if (scriptPubKey.length() > 0 && strncmp(scriptPubKey.c_str(), "OP_RETURN", 9) == 0) {
-                    vector<unsigned char> v = ParseHex(scriptPubKey.substr(9, string::npos));
-                    std::string evtDescr(v.begin(), v.end());
-                    std::vector<std::string> strs;
-                    boost::split(strs, evtDescr, boost::is_any_of("|"));
-
-                    printf("%s \n",evtDescr.c_str());
-                    if (strs.size() != 11 || strs[0] != "1") {
+                    txnouttype type;
+                    vector<CTxDestination> addrs;
+                    int nRequired;
+                    if (!ExtractDestinations(txout.scriptPubKey, type, addrs, nRequired)) {
                         continue;
                     }
 
-                    time_t time = (time_t) std::strtol(strs[3].c_str(), nullptr, 10);
-                    time_t currentTime = std::time(0);
-                    if( time < (currentTime - 1200) ){
-                        continue;
-                    }
-
-                    // TODO Handle version field.
-
-                    UniValue evt(UniValue::VOBJ);
-
-                    evt.push_back(Pair("id", strs[2]));
-                    evt.push_back(Pair("name", strs[4]));
-                    evt.push_back(Pair("round", strs[5]));
-                    evt.push_back(Pair("starting", strs[3]));
-
-                    UniValue teams(UniValue::VARR);
-                    for (unsigned int t = 6; t <= 8; t++) {
-                        UniValue team(UniValue::VOBJ);
-                        
-                        if( t < 8 ){
-                            team.push_back(Pair("name", strs[t]));
-                            team.push_back(Pair("odds", strs[t+2]));
+                    BOOST_FOREACH (const CTxDestination &addr, addrs) {
+                        // TODO Take this wallet address as a configuration value.
+                        if (CBitcoinAddress(addr).ToString() == "TCQyQ6dm6GKfpeVvHWHzcRAjtKsJ3hX4AJ") {
+                            printf( "MATCH vinAddr %s Our Addr %s \n", CBitcoinAddress(addr).ToString().c_str(), "TCQyQ6dm6GKfpeVvHWHzcRAjtKsJ3hX4AJ" );
+                            match = true;
+                            break;
                         }
-                        else{
-                            team.push_back(Pair("name", "Draw"));
-                            team.push_back(Pair("odds", strs[t+2] ) );
-                        }
-
-                        teams.push_back( team );
                     }
-                    evt.push_back(Pair("teams", teams));
-
-                    ret.push_back(evt);
                 }
 
-                txnouttype type;
-                vector<CTxDestination> addrs;
-                int nRequired;
-                if (!ExtractDestinations(txout.scriptPubKey, type, addrs, nRequired)) {
-                    continue;
-                }
+                for (unsigned int i = 0; i < tx.vout.size(); i++) {
+                    const CTxOut &txout = tx.vout[i];
+                    std::string scriptPubKey = txout.scriptPubKey.ToString();
 
-                BOOST_FOREACH (const CTxDestination& addr, addrs) {
-                    // TODO Take this wallet address as a configuration value.
-                    if (CBitcoinAddress(addr).ToString() == "TVASr4bm6Rz19udhUWmSGtrrDExCjQdATp") {
-                        coreWalletVouts.insert(make_pair(tx.GetHash(), i));
+                    // TODO Remove hard-coded values from this block.
+                    if( match && scriptPubKey.length() > 0 && strncmp(scriptPubKey.c_str(), "OP_RETURN", 9) == 0) {
+                        vector<unsigned char> v = ParseHex(scriptPubKey.substr(9, string::npos));
+                        std::string evtDescr(v.begin(), v.end());
+                        std::vector <std::string> strs;
+                        boost::split(strs, evtDescr, boost::is_any_of("|"));
+
+                        if (strs.size() != 11 || strs[0] != "1") {
+                            continue;
+                        }
+
+                        time_t time = (time_t) std::strtol(strs[3].c_str(), nullptr, 10);
+                        time_t currentTime = std::time(0);
+                        if (time < (currentTime - 1200)) {
+                            continue;
+                        }
+
+                        printf("%s \n", evtDescr.c_str());
+
+                        // TODO Handle version field.
+
+                        UniValue evt(UniValue::VOBJ);
+
+                        evt.push_back(Pair("tx-id", txHash.ToString().c_str()));
+                        evt.push_back(Pair("id", strs[2]));
+                        evt.push_back(Pair("name", strs[4]));
+                        evt.push_back(Pair("round", strs[5]));
+                        evt.push_back(Pair("starting", strs[3]));
+
+                        UniValue teams(UniValue::VARR);
+                        for (unsigned int t = 6; t <= 8; t++) {
+                            UniValue team(UniValue::VOBJ);
+
+                            if (t < 8) {
+                                team.push_back(Pair("name", strs[t]));
+                                team.push_back(Pair("odds", strs[t + 2]));
+                            } else {
+                                team.push_back(Pair("name", "DRW"));
+                                team.push_back(Pair("odds", strs[t + 2]));
+                            }
+
+                            teams.push_back(team);
+                        }
+                        evt.push_back(Pair("teams", teams));
+
+                        ret.push_back(evt);
                     }
                 }
             }
-        }
+        //}
         pindex = chainActive.Next(pindex);
     }
 
@@ -233,9 +245,13 @@ UniValue listbets(const UniValue& params, bool fHelp)
     for (CWallet::TxItems::const_reverse_iterator it = txOrdered.rbegin(); it != txOrdered.rend(); ++it) {
         CWalletTx* const pwtx = (*it).second.first;
         if (pwtx != 0) {
+
+            uint256 txHash = (*pwtx).GetHash();
+
             for (unsigned int i = 0; i < (*pwtx).vout.size(); i++) {
                 const CTxOut& txout = (*pwtx).vout[i];
                 std::string s = txout.scriptPubKey.ToString();
+
                 if (s.length() > 0) {
                     // TODO Remove hard-coded values from this block.
                     if (0 == strncmp(s.c_str(), "OP_RETURN", 9)) {
@@ -249,6 +265,7 @@ UniValue listbets(const UniValue& params, bool fHelp)
                         }
 
                         UniValue entry(UniValue::VOBJ);
+                        entry.push_back(Pair("tx-id", txHash.ToString().c_str()));
                         entry.push_back(Pair("event-id", strs[2]));
                         entry.push_back(Pair("team-to-win", strs[3]));
                         entry.push_back(Pair("amount", ValueFromAmount(txout.nValue)));

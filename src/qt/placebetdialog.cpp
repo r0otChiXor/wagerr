@@ -398,7 +398,7 @@ void PlaceBetDialog::prepareBet(CEvent* event, const std::string& teamToWin, con
     countryNames.insert(make_pair("SRB", "Serbia"));
     countryNames.insert(make_pair("URU", "Uruguay"));
     countryNames.insert(make_pair("BEL", "Belgium"));
-    countryNames.insert(make_pair("COL", "Columbia"));
+    countryNames.insert(make_pair("COL", "Colombia"));
     countryNames.insert(make_pair("CRO", "Croatia"));
     countryNames.insert(make_pair("ENG", "England"));
     countryNames.insert(make_pair("JPN", "Japan"));
